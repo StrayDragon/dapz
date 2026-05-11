@@ -1,0 +1,18 @@
+stateDiagram-v2
+    [*] --> Created: Proxy::new(config)
+    Created --> Initializing: start()
+    Initializing --> Ready: configurationDone received
+    Ready --> ShuttingDown: disconnect received
+    ShuttingDown --> Exited: exit
+    Exited --> [*]
+
+    state Ready {
+        [*] --> Idle
+        Idle --> Forwarding: Client→Server msg
+        Forwarding --> Idle
+        Idle --> Intercepting: Server→Client msg
+        Intercepting --> Compressing: matched interceptor
+        Intercepting --> Forwarding: no match
+        Compressing --> Idle
+        Compressing --> Forwarding: compression failed
+    }

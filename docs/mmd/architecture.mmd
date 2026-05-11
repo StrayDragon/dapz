@@ -1,0 +1,28 @@
+graph TB
+    subgraph Core["dapz crate (feature flags)"]
+        PROXY["Proxy Core<br/>生命周期管理<br/>消息路由"]
+        INTERCEPTOR["Interceptor Chain<br/>转换/压缩/过滤"]
+        CODEC["Codec Layer<br/>JSON-RPC 编解码"]
+        TRANSPORT["Transport Trait<br/>抽象 I/O 通道"]
+        CONFIG["Config<br/>Builder + Env"]
+        ERROR["Error Types<br/>thiserror"]
+    end
+
+    subgraph Delivery["交付形态"]
+        LIB["Library Mode<br/>use dapz::Proxy"]
+        CLIBIN["Proxy Mode<br/>dapz --backend debug-adapter"]
+    end
+
+    PROXY --> INTERCEPTOR
+    PROXY --> CODEC
+    PROXY --> TRANSPORT
+    PROXY --> CONFIG
+    PROXY --> ERROR
+    INTERCEPTOR --> CODEC
+    CODEC --> ERROR
+    LIB --> PROXY
+
+    classDef core fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    classDef delivery fill:#7ED321,stroke:#5BA01A,stroke-width:2px,color:#fff
+    class Core core
+    class LIB,CLIBIN delivery

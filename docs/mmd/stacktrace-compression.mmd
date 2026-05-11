@@ -1,0 +1,10 @@
+sequenceDiagram
+    participant Agent as DAP Client
+    participant Proxy as dapz Proxy
+    participant Server as DAP Server
+
+    Agent->>Proxy: request (command=stackTrace)
+    Proxy->>Server: forward
+    Server-->>Proxy: response (command=stackTrace)
+    Note over Proxy: StackTraceCompressor<br/>path abbreviations<br/>param trimming
+    Proxy-->>Agent: response (compressed)
