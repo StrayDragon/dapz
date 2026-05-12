@@ -1,0 +1,40 @@
+flowchart TB
+    subgraph Incoming["Server → Client Messages"]
+        MSG["DAP Message (JSON-RPC 2.0)"]
+    end
+
+    subgraph Chain["Interceptor Chain (4 interceptors)"]
+        direction TB
+        C["CappingInterceptor<br/>截断大返回"]
+        O["OutputCompressor<br/>重复行折叠"]
+        V["VariablesCompressor<br/>长值截断"]
+        S["StackTraceCompressor<br/>路径缩写"]
+    end
+
+    subgraph ErrorPath["Error Handling (Fail-Open)"]
+        ERR["Compression Failed"]
+        FALLBACK["Transparent Forward"]
+        LOG["Log WARN + Continue"]
+        ERR --> FALLBACK
+        ERR --> LOG
+    end
+
+    subgraph Outgoing["→ AI Agent"]
+        COMPRESSED["Compressed"]
+        RAW["Original Message"]
+    end
+
+    MSG --> C --> O --> V --> S
+    S -->|Success| COMPRESSED
+    S -->|Failure| ERR
+    FALLBACK --> RAW
+
+    classDef incoming fill:#7ED321,stroke:#5BA01A,stroke-width:2px,color:#fff
+    classDef chain fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
+    classDef error fill:#F5A623,stroke:#D4880F,stroke-width:2px,color:#fff
+    classDef outgoing fill:#9013FE,stroke:#6A0DAD,stroke-width:2px,color:#fff
+
+    class MSG incoming
+    class C,O,V,S chain
+    class ERR,FALLBACK,LOG error
+    class COMPRESSED,RAW outgoing
