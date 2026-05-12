@@ -6,7 +6,7 @@ license = "MIT"
 repository = "https://github.com/StrayDragon/dapz"
 description = "AI-friendly DAP compression proxy — token-efficient Debug Adapter Protocol proxy"
 readme = "README.md"
-keywords = ["dap", "proxy", "compression", "ai", "agent", "debug"]
+keywords = ["dap", "proxy", "compression", "ai", "agent"]
 categories = ["development-tools"]
 
 [features]
