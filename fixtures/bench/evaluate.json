@@ -1,0 +1,53 @@
+[
+  {
+    "name": "simple numeric result",
+    "interceptor": "evaluate_compressor",
+    "message": {
+      "seq": 10,
+      "type": "response",
+      "command": "evaluate",
+      "request_seq": 9,
+      "success": true,
+      "body": {
+        "result": "42",
+        "type": "int",
+        "variablesReference": 0
+      }
+    }
+  },
+  {
+    "name": "string result",
+    "interceptor": "evaluate_compressor",
+    "message": {
+      "seq": 11,
+      "type": "response",
+      "command": "evaluate",
+      "request_seq": 9,
+      "success": true,
+      "body": {
+        "result": "\"hello world this is a test string\"",
+        "type": "String",
+        "variablesReference": 0,
+        "memoryReference": "0x7fff00000010"
+      }
+    }
+  },
+  {
+    "name": "long JSON dump eval",
+    "interceptor": "evaluate_compressor",
+    "message": {
+      "seq": 12,
+      "type": "response",
+      "command": "evaluate",
+      "request_seq": 9,
+      "success": true,
+      "body": {
+        "result": "{\n  \"name\": \"John Doe\",\n  \"age\": 30,\n  \"email\": \"john@example.com\",\n  \"address\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"Springfield\",\n    \"state\": \"IL\",\n    \"zip\": \"62701\"\n  },\n  \"phoneNumbers\": [\n    {\"type\": \"home\", \"number\": \"555-1234\"},\n    {\"type\": \"work\", \"number\": \"555-5678\"}\n  ]\n}",
+        "type": "dict",
+        "variablesReference": 42,
+        "namedVariables": 5,
+        "memoryReference": "0x7fff00000020"
+      }
+    }
+  }
+]

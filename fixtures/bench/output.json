@@ -1,0 +1,62 @@
+[
+  {
+    "name": "simple stdout line",
+    "interceptor": "output_compressor",
+    "message": {
+      "seq": 1,
+      "type": "event",
+      "event": "output",
+      "body": {
+        "category": "stdout",
+        "output": "Hello, world!\n"
+      }
+    }
+  },
+  {
+    "name": "multi-line with ANSI",
+    "interceptor": "output_compressor",
+    "message": {
+      "seq": 2,
+      "type": "event",
+      "event": "output",
+      "body": {
+        "category": "stdout",
+        "output": "\u001b[32mPASS\u001b[0m test_foo\n\u001b[32mPASS\u001b[0m test_bar\n\u001b[31mFAIL\u001b[0m test_baz\n\u001b[33mWARN\u001b[0m: flaky test detected\n"
+      }
+    }
+  },
+  {
+    "name": "repeated lines with ANSI",
+    "interceptor": "output_compressor",
+    "message": {
+      "seq": 3,
+      "type": "event",
+      "event": "output",
+      "body": {
+        "category": "stderr",
+        "output": "\u001b[31mERROR\u001b[0m: Connection timeout\n\u001b[31mERROR\u001b[0m: Connection timeout\n\u001b[31mERROR\u001b[0m: Connection timeout\n\u001b[31mERROR\u001b[0m: Connection timeout\n\u001b[31mERROR\u001b[0m: Connection timeout\nretry attempt 1\nretry attempt 2\n"
+      }
+    }
+  },
+  {
+    "name": "large output with source",
+    "interceptor": "output_compressor",
+    "message": {
+      "seq": 4,
+      "type": "event",
+      "event": "output",
+      "body": {
+        "category": "console",
+        "output": "Debug: variable x = 42\nDebug: variable y = \"hello\"\nDebug: variable z = [1, 2, 3]\nTrace: entering compute()\nTrace: exiting compute()\nTrace: entering main()\nTrace: exiting main()\n",
+        "source": {
+          "path": "/home/user/projects/my-app/src/main.rs",
+          "name": "main.rs",
+          "checksums": [{"algorithm": "md5", "checksum": "abc123def456"}]
+        },
+        "line": 42,
+        "column": 10,
+        "data": {"someExtra": "metadata"}
+      }
+    }
+  }
+]

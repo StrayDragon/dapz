@@ -46,7 +46,9 @@ bench-report:
 compress-demo:
     cargo run --example compress-demo
 
-# Run full benchmark suite + save report.
-bench-all:
-    cargo bench
-    bash scripts/run-bench.sh 2>/dev/null || echo "No bench script yet"
+# Regenerate docs/src/benchmarks.md from fixtures.
+gen-bench:
+    bash scripts/run-bench.sh
+
+# Run full benchmark suite + generate report.
+bench-all: bench gen-bench

@@ -1,0 +1,209 @@
+[
+  {
+    "name": "shallow call stack",
+    "interceptor": "stacktrace_compressor",
+    "message": {
+      "seq": 30,
+      "type": "response",
+      "command": "stackTrace",
+      "request_seq": 29,
+      "success": true,
+      "body": {
+        "stackFrames": [
+          {
+            "id": 1,
+            "name": "main",
+            "source": {"path": "/home/user/project/src/main.rs", "name": "main.rs"},
+            "line": 42,
+            "column": 5
+          },
+          {
+            "id": 2,
+            "name": "compute(a: i32, b: i32)",
+            "source": {"path": "/home/user/project/src/main.rs", "name": "main.rs"},
+            "line": 10,
+            "column": 4
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "deep stack with synthetic frames",
+    "interceptor": "stacktrace_compressor",
+    "message": {
+      "seq": 31,
+      "type": "response",
+      "command": "stackTrace",
+      "request_seq": 29,
+      "success": true,
+      "body": {
+        "stackFrames": [
+          {
+            "id": 1,
+            "name": "main",
+            "source": {"path": "/home/user/project/src/main.rs", "name": "main.rs"},
+            "line": 50,
+            "column": 1,
+            "instructionPointerReference": "0x55555555a000",
+            "moduleId": 100
+          },
+          {
+            "id": 2,
+            "name": "run()",
+            "source": {"path": "/home/user/project/src/main.rs", "name": "main.rs"},
+            "line": 48,
+            "column": 5,
+            "instructionPointerReference": "0x55555555a010",
+            "moduleId": 100
+          },
+          {
+            "id": 3,
+            "name": "handle_request(req: Request, ctx: Context)",
+            "source": {"path": "/home/user/project/src/handler.rs", "name": "handler.rs"},
+            "line": 120,
+            "column": 8,
+            "instructionPointerReference": "0x55555555a020",
+            "moduleId": 100
+          },
+          {
+            "id": 4,
+            "name": "process_data(data: Vec<u8>)",
+            "source": {"path": "/home/user/project/src/handler.rs", "name": "handler.rs"},
+            "line": 85,
+            "column": 12,
+            "instructionPointerReference": "0x55555555a030",
+            "moduleId": 100
+          },
+          {
+            "id": 5,
+            "name": "validate_input(input: &str) -> bool",
+            "source": {"path": "/home/user/project/src/validation.rs", "name": "validation.rs"},
+            "line": 33,
+            "column": 4,
+            "instructionPointerReference": "0x55555555a040",
+            "moduleId": 100
+          },
+          {
+            "id": 6,
+            "name": "__libc_start_main",
+            "presentationHint": "label",
+            "source": {"path": "/usr/lib/libc.so.6", "name": "libc.so.6"},
+            "line": 0,
+            "column": 0
+          },
+          {
+            "id": 7,
+            "name": "_start",
+            "presentationHint": "subtle",
+            "source": {"path": "/home/user/project/src/main.rs", "name": "main.rs"},
+            "line": 0,
+            "column": 0
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "large stack trace",
+    "interceptor": "stacktrace_compressor",
+    "message": {
+      "seq": 32,
+      "type": "response",
+      "command": "stackTrace",
+      "request_seq": 29,
+      "success": true,
+      "body": {
+        "stackFrames": [
+          {
+            "id": 1,
+            "name": "main",
+            "source": {"path": "/home/user/project/src/main.rs", "name": "main.rs"},
+            "line": 42,
+            "column": 5,
+            "instructionPointerReference": "0x55555555a000",
+            "moduleId": 100
+          },
+          {
+            "id": 2,
+            "name": "serve(addr: SocketAddr)",
+            "source": {"path": "/home/user/project/src/main.rs", "name": "main.rs"},
+            "line": 38,
+            "column": 9,
+            "instructionPointerReference": "0x55555555a010",
+            "moduleId": 100
+          },
+          {
+            "id": 3,
+            "name": "handle_connection(stream: TcpStream)",
+            "source": {"path": "/home/user/project/src/server.rs", "name": "server.rs"},
+            "line": 100,
+            "column": 12,
+            "instructionPointerReference": "0x55555555a020",
+            "moduleId": 100
+          },
+          {
+            "id": 4,
+            "name": "parse_request(buf: &[u8]) -> Result<Request>",
+            "source": {"path": "/home/user/project/src/server.rs", "name": "server.rs"},
+            "line": 55,
+            "column": 8,
+            "instructionPointerReference": "0x55555555a030",
+            "moduleId": 100
+          },
+          {
+            "id": 5,
+            "name": "route(request: &Request) -> Response",
+            "source": {"path": "/home/user/project/src/router.rs", "name": "router.rs"},
+            "line": 200,
+            "column": 16,
+            "instructionPointerReference": "0x55555555a040",
+            "moduleId": 100
+          },
+          {
+            "id": 6,
+            "name": "handle_api(request: &Request) -> Response",
+            "source": {"path": "/home/user/project/src/router.rs", "name": "router.rs"},
+            "line": 180,
+            "column": 20,
+            "instructionPointerReference": "0x55555555a050",
+            "moduleId": 100
+          },
+          {
+            "id": 7,
+            "name": "query_db(sql: &str) -> Result<Vec<Row>>",
+            "source": {"path": "/home/user/project/src/db.rs", "name": "db.rs"},
+            "line": 50,
+            "column": 4,
+            "instructionPointerReference": "0x55555555a060",
+            "moduleId": 100
+          },
+          {
+            "id": 8,
+            "name": "__libc_start_main",
+            "presentationHint": "label",
+            "source": {"path": "/usr/lib/libc.so.6", "name": "libc.so.6"},
+            "line": 0,
+            "column": 0
+          },
+          {
+            "id": 9,
+            "name": "_start",
+            "presentationHint": "subtle",
+            "source": {"path": "/home/user/project/src/main.rs", "name": "main.rs"},
+            "line": 0,
+            "column": 0
+          },
+          {
+            "id": 10,
+            "name": "call_weak_fn",
+            "presentationHint": "label",
+            "source": {"path": "/usr/lib/libgcc_s.so.1", "name": "libgcc_s.so.1"},
+            "line": 0,
+            "column": 0
+          }
+        ]
+      }
+    }
+  }
+]

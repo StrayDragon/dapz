@@ -1,0 +1,68 @@
+[
+  {
+    "name": "large output event",
+    "interceptor": "capping_interceptor",
+    "message": {
+      "seq": 1,
+      "type": "event",
+      "event": "output",
+      "body": {
+        "category": "stdout",
+        "output": "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\nline 11\nline 12\n"
+      }
+    }
+  },
+  {
+    "name": "large stack trace",
+    "interceptor": "capping_interceptor",
+    "message": {
+      "seq": 30,
+      "type": "response",
+      "command": "stackTrace",
+      "request_seq": 29,
+      "success": true,
+      "body": {
+        "stackFrames": [
+          {"id": 1, "name": "frame1", "line": 1, "column": 1},
+          {"id": 2, "name": "frame2", "line": 2, "column": 1},
+          {"id": 3, "name": "frame3", "line": 3, "column": 1},
+          {"id": 4, "name": "frame4", "line": 4, "column": 1},
+          {"id": 5, "name": "frame5", "line": 5, "column": 1},
+          {"id": 6, "name": "frame6", "line": 6, "column": 1},
+          {"id": 7, "name": "frame7", "line": 7, "column": 1},
+          {"id": 8, "name": "frame8", "line": 8, "column": 1},
+          {"id": 9, "name": "frame9", "line": 9, "column": 1},
+          {"id": 10, "name": "frame10", "line": 10, "column": 1}
+        ]
+      }
+    }
+  },
+  {
+    "name": "large variables response",
+    "interceptor": "capping_interceptor",
+    "message": {
+      "seq": 20,
+      "type": "response",
+      "command": "variables",
+      "request_seq": 19,
+      "success": true,
+      "body": {
+        "variables": [
+          {"name": "v0", "value": "0", "type": "int"},
+          {"name": "v1", "value": "1", "type": "int"},
+          {"name": "v2", "value": "2", "type": "int"},
+          {"name": "v3", "value": "3", "type": "int"},
+          {"name": "v4", "value": "4", "type": "int"},
+          {"name": "v5", "value": "5", "type": "int"},
+          {"name": "v6", "value": "6", "type": "int"},
+          {"name": "v7", "value": "7", "type": "int"},
+          {"name": "v8", "value": "8", "type": "int"},
+          {"name": "v9", "value": "9", "type": "int"},
+          {"name": "v10", "value": "10", "type": "int"},
+          {"name": "v11", "value": "11", "type": "int"},
+          {"name": "v12", "value": "12", "type": "int"}
+        ]
+      }
+    }
+  }
+]

@@ -1,0 +1,79 @@
+[
+  {
+    "name": "few simple variables",
+    "interceptor": "variables_compressor",
+    "message": {
+      "seq": 20,
+      "type": "response",
+      "command": "variables",
+      "request_seq": 19,
+      "success": true,
+      "body": {
+        "variables": [
+          {"name": "x", "value": "42", "type": "int", "variablesReference": 0},
+          {"name": "name", "value": "\"alice\"", "type": "String", "variablesReference": 0},
+          {"name": "flag", "value": "true", "type": "bool", "variablesReference": 0}
+        ]
+      }
+    }
+  },
+  {
+    "name": "mixed types with array",
+    "interceptor": "variables_compressor",
+    "message": {
+      "seq": 21,
+      "type": "response",
+      "command": "variables",
+      "request_seq": 19,
+      "success": true,
+      "body": {
+        "variables": [
+          {"name": "count", "value": "100", "type": "int", "variablesReference": 0},
+          {"name": "label", "value": "\"test\"", "type": "String", "variablesReference": 0},
+          {
+            "name": "items",
+            "value": "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]",
+            "type": "int[]",
+            "variablesReference": 10,
+            "indexedVariables": 10,
+            "namedVariables": 0
+          },
+          {
+            "name": "matrix",
+            "value": "[[1, 2], [3, 4], [5, 6]]",
+            "type": "int[][]",
+            "variablesReference": 20,
+            "indexedVariables": 3,
+            "namedVariables": 0
+          },
+          {"name": "message", "value": "a moderately long string value that should get truncated by the compressor", "type": "String", "variablesReference": 0}
+        ]
+      }
+    }
+  },
+  {
+    "name": "many vars with noise fields",
+    "interceptor": "variables_compressor",
+    "message": {
+      "seq": 22,
+      "type": "response",
+      "command": "variables",
+      "request_seq": 19,
+      "success": true,
+      "body": {
+        "variables": [
+          {"name": "a", "value": "0", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff00000030", "declarationLocationReference": 1, "valueLocationReference": 2},
+          {"name": "b", "value": "1", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff00000034", "declarationLocationReference": 1, "valueLocationReference": 2},
+          {"name": "c", "value": "2", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff00000038", "declarationLocationReference": 1, "valueLocationReference": 2},
+          {"name": "d", "value": "3", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff0000003c", "declarationLocationReference": 1, "valueLocationReference": 2},
+          {"name": "e", "value": "4", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff00000040", "declarationLocationReference": 1, "valueLocationReference": 2},
+          {"name": "f", "value": "5", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff00000044", "declarationLocationReference": 1, "valueLocationReference": 2},
+          {"name": "g", "value": "6", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff00000048", "declarationLocationReference": 1, "valueLocationReference": 2},
+          {"name": "h", "value": "7", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff0000004c", "declarationLocationReference": 1, "valueLocationReference": 2},
+          {"name": "i", "value": "8", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff00000050", "declarationLocationReference": 1, "valueLocationReference": 2},
+          {"name": "j", "value": "9", "type": "int", "variablesReference": 0, "memoryReference": "0x7fff00000054", "declarationLocationReference": 1, "valueLocationReference": 2}
+        ]
+      }
+    }
+  }
+]
