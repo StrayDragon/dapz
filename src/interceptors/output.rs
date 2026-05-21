@@ -6,13 +6,16 @@
 //!
 //! ## Compression Strategies
 //!
-//! 1. **Repeated line folding**: consecutive identical output lines → `(xN)` suffix
-//! 2. **Category abbreviation**: `stdout`→`O`, `stderr`→`E`, `console`→`C`
-//! 3. **Line count limit**: cap at a maximum number of lines
+//! 1. **ANSI stripping**: remove color/style escape sequences (pure noise for LLMs)
+//! 2. **Repeated line folding**: consecutive identical output lines → `(xN)` suffix
+//! 3. **Category abbreviation**: `stdout`→`O`, `stderr`→`E`, `console`→`C`
+//! 4. **Source abbreviation**: shorten source paths
+//! 5. **Noise field removal**: drop `data`, `line`, `column` (not useful for LLM)
 
 use crate::codec::json_rpc::DapMessage;
 use crate::error::DapzError;
 use crate::interceptors::Interceptor;
+use crate::interceptors::utils::{abbreviate_source, strip_ansi};
 use crate::proxy::Direction;
 
 /// Compressor for DAP `output` events.
@@ -35,9 +38,15 @@ impl Interceptor for OutputCompressor {
         mut msg: DapMessage,
         _direction: Direction,
     ) -> Result<Option<DapMessage>, DapzError> {
-        if let Some(ref mut args) = msg.arguments {
-            // Abbreviate category
-            if let Some(cat) = args.get("category").and_then(|v| v.as_str()) {
+        if let Some(ref mut body) = msg.body {
+            // 1. Strip ANSI escape sequences from output text
+            if let Some(output) = body.get("output").and_then(|v| v.as_str()) {
+                let cleaned = strip_ansi(output);
+                body["output"] = serde_json::Value::String(cleaned);
+            }
+
+            // 2. Abbreviate category
+            if let Some(cat) = body.get("category").and_then(|v| v.as_str()) {
                 let abbr = match cat {
                     "stdout" => "O",
                     "stderr" => "E",
@@ -46,13 +55,25 @@ impl Interceptor for OutputCompressor {
                     "telemetry" => "T",
                     _ => cat,
                 };
-                args["category"] = serde_json::Value::String(abbr.into());
+                body["category"] = serde_json::Value::String(abbr.into());
             }
 
-            // Compress repeated lines in output text
-            if let Some(output) = args.get("output").and_then(|v| v.as_str()) {
+            // 3. Compress repeated lines in output text
+            if let Some(output) = body.get("output").and_then(|v| v.as_str()) {
                 let compressed = compress_output_text(output);
-                args["output"] = serde_json::Value::String(compressed);
+                body["output"] = serde_json::Value::String(compressed);
+            }
+
+            // 4. Abbreviate source if present
+            if let Some(source) = body.get_mut("source") {
+                abbreviate_source(source);
+            }
+
+            // 5. Remove noise fields (not useful for LLM debug flow)
+            if let Some(obj) = body.as_object_mut() {
+                obj.remove("data");
+                obj.remove("line");
+                obj.remove("column");
             }
         }
         Ok(Some(msg))
@@ -121,7 +142,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_output_compressor_abbreviates_category() {
+    async fn test_output_compressor_abbreviates_category_and_compresses() {
         let compressor = OutputCompressor;
         let msg = DapMessage {
             seq: 1,
@@ -130,11 +151,11 @@ mod tests {
             event: Some("output".into()),
             request_seq: None,
             success: None,
-            body: None,
-            arguments: Some(serde_json::json!({
+            body: Some(serde_json::json!({
                 "category": "stdout",
                 "output": "hello\nworld\nworld"
             })),
+            arguments: None,
         };
 
         let result = compressor
@@ -142,8 +163,117 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        let args = result.arguments.unwrap();
-        assert_eq!(args["category"], "O");
-        assert_eq!(args["output"], "hello\nworld (x2)");
+        let body = result.body.unwrap();
+        assert_eq!(body["category"], "O");
+        assert_eq!(body["output"], "hello\nworld (x2)");
+    }
+
+    #[tokio::test]
+    async fn test_output_compressor_strips_ansi() {
+        let compressor = OutputCompressor;
+        let msg = DapMessage {
+            seq: 1,
+            msg_type: "event".into(),
+            command: None,
+            event: Some("output".into()),
+            request_seq: None,
+            success: None,
+            body: Some(serde_json::json!({
+                "category": "stdout",
+                "output": "\x1b[31mERROR\x1b[0m: something broke\n\x1b[33mWARN\x1b[0m: caution"
+            })),
+            arguments: None,
+        };
+
+        let result = compressor
+            .intercept(msg, Direction::ServerToClient)
+            .await
+            .unwrap()
+            .unwrap();
+        let body = result.body.unwrap();
+        assert_eq!(body["output"], "ERROR: something broke\nWARN: caution");
+    }
+
+    #[tokio::test]
+    async fn test_output_compressor_abbreviates_source() {
+        let compressor = OutputCompressor;
+        let msg = DapMessage {
+            seq: 1,
+            msg_type: "event".into(),
+            command: None,
+            event: Some("output".into()),
+            request_seq: None,
+            success: None,
+            body: Some(serde_json::json!({
+                "category": "stdout",
+                "output": "hello",
+                "source": {
+                    "path": "/home/user/project/src/main.rs",
+                    "name": "main.rs",
+                    "checksums": [{"algorithm": "md5", "checksum": "abc"}],
+                }
+            })),
+            arguments: None,
+        };
+
+        let result = compressor
+            .intercept(msg, Direction::ServerToClient)
+            .await
+            .unwrap()
+            .unwrap();
+        let body = result.body.unwrap();
+        let source = body.get("source").unwrap();
+        assert_eq!(source["path"], "src/main.rs");
+        assert!(!source.as_object().unwrap().contains_key("checksums"));
+    }
+
+    #[tokio::test]
+    async fn test_output_compressor_removes_noise_fields() {
+        let compressor = OutputCompressor;
+        let msg = DapMessage {
+            seq: 1,
+            msg_type: "event".into(),
+            command: None,
+            event: Some("output".into()),
+            request_seq: None,
+            success: None,
+            body: Some(serde_json::json!({
+                "category": "stdout",
+                "output": "hello",
+                "data": {"extra": "info"},
+                "line": 42,
+                "column": 10,
+            })),
+            arguments: None,
+        };
+
+        let result = compressor
+            .intercept(msg, Direction::ServerToClient)
+            .await
+            .unwrap()
+            .unwrap();
+        let body = result.body.unwrap();
+        let obj = body.as_object().unwrap();
+        assert!(!obj.contains_key("data"));
+        assert!(!obj.contains_key("line"));
+        assert!(!obj.contains_key("column"));
+        assert!(obj.contains_key("output"));
+        assert!(obj.contains_key("category"));
+    }
+
+    #[tokio::test]
+    async fn test_output_does_not_apply_to_non_output() {
+        let compressor = OutputCompressor;
+        let msg = DapMessage {
+            seq: 1,
+            msg_type: "event".into(),
+            command: None,
+            event: Some("stopped".into()),
+            request_seq: None,
+            success: None,
+            body: None,
+            arguments: None,
+        };
+        assert!(!compressor.applies_to(&msg, Direction::ServerToClient));
     }
 }

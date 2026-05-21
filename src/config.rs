@@ -32,7 +32,7 @@ impl std::str::FromStr for OutputFormat {
 }
 
 /// Per-type capping limits for DAP server responses.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct CappingConfig {
     /// Maximum number of stack frames to keep (0 = unlimited).
     pub max_frames: usize,
@@ -40,6 +40,32 @@ pub struct CappingConfig {
     pub max_variables: usize,
     /// Maximum output event text length in chars (0 = unlimited).
     pub max_output_length: usize,
+    /// Maximum evaluate result string length in chars (0 = unlimited).
+    #[serde(default = "default_max_evaluate_length")]
+    pub max_evaluate_length: usize,
+    /// Maximum variable value string length in chars (0 = unlimited).
+    #[serde(default = "default_max_value_length")]
+    pub max_value_length: usize,
+}
+
+fn default_max_evaluate_length() -> usize {
+    500
+}
+
+fn default_max_value_length() -> usize {
+    120
+}
+
+impl Default for CappingConfig {
+    fn default() -> Self {
+        Self {
+            max_frames: 0,
+            max_variables: 0,
+            max_output_length: 0,
+            max_evaluate_length: default_max_evaluate_length(),
+            max_value_length: default_max_value_length(),
+        }
+    }
 }
 
 impl CappingConfig {
@@ -66,6 +92,9 @@ pub struct Config {
     /// Whether to enable stackTrace response compression.
     #[serde(default = "default_true")]
     pub enable_stacktrace_compress: bool,
+    /// Whether to enable evaluate response compression.
+    #[serde(default = "default_true")]
+    pub enable_evaluate_compress: bool,
     /// Output format.
     #[serde(default = "default_output_format")]
     pub output_format: OutputFormat,
@@ -94,6 +123,7 @@ impl Default for Config {
             enable_output_compress: true,
             enable_variables_compress: true,
             enable_stacktrace_compress: true,
+            enable_evaluate_compress: true,
             output_format: OutputFormat::Json,
             log_level: "info".into(),
         }
@@ -120,6 +150,7 @@ impl Config {
             "output_compressor" => self.enable_output_compress,
             "variables_compressor" => self.enable_variables_compress,
             "stacktrace_compressor" => self.enable_stacktrace_compress,
+            "evaluate_compressor" => self.enable_evaluate_compress,
             _ => true,
         }
     }
@@ -133,6 +164,7 @@ pub struct ConfigBuilder {
     enable_output_compress: Option<bool>,
     enable_variables_compress: Option<bool>,
     enable_stacktrace_compress: Option<bool>,
+    enable_evaluate_compress: Option<bool>,
     output_format: Option<OutputFormat>,
     log_level: Option<String>,
 }
@@ -159,6 +191,12 @@ impl ConfigBuilder {
     /// Enable or disable stackTrace response compression.
     pub fn enable_stacktrace_compress(mut self, enable: bool) -> Self {
         self.enable_stacktrace_compress = Some(enable);
+        self
+    }
+
+    /// Enable or disable evaluate response compression.
+    pub fn enable_evaluate_compress(mut self, enable: bool) -> Self {
+        self.enable_evaluate_compress = Some(enable);
         self
     }
 
@@ -214,6 +252,15 @@ impl ConfigBuilder {
             })
             .unwrap_or(true);
 
+        let enable_evaluate_compress = self
+            .enable_evaluate_compress
+            .or_else(|| {
+                std::env::var("DAPZ_ENABLE_EVALUATE_COMPRESS")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+            })
+            .unwrap_or(true);
+
         let log_level = self
             .log_level
             .or_else(|| std::env::var("DAPZ_LOG_LEVEL").ok())
@@ -242,6 +289,14 @@ impl ConfigBuilder {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(0),
+            max_evaluate_length: std::env::var("DAPZ_MAX_EVALUATE_LENGTH")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(500),
+            max_value_length: std::env::var("DAPZ_MAX_VALUE_LENGTH")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(120),
         });
 
         Ok(Config {
@@ -250,6 +305,7 @@ impl ConfigBuilder {
             enable_output_compress,
             enable_variables_compress,
             enable_stacktrace_compress,
+            enable_evaluate_compress,
             output_format,
             log_level,
         })

@@ -4,13 +4,19 @@
 //!
 //! ## Compression Strategies
 //!
-//! 1. **Path abbreviation**: shorten source paths to just filename
-//! 2. **Parameter removal**: strip function arguments from frame names
-//! 3. **Module prefix trimming**: remove common module prefixes
+//! 1. **Synthetic frame filtering**: remove frames with `presentationHint: "label"`
+//!    or `"subtle"` — these are synthetic frames with no meaningful source location.
+//! 2. **Source deduplication**: consecutive frames from the same file get an empty
+//!    `path` (repeating the same path wastes tokens).
+//! 3. **Path abbreviation**: shorten source paths to `dir/filename`.
+//! 4. **Function name trimming**: strip parameters from function names.
+//! 5. **Field pruning**: remove `instructionPointerReference` and `moduleId`
+//!    (raw addresses and module IDs are noise for LLM).
 
 use crate::codec::json_rpc::DapMessage;
 use crate::error::DapzError;
 use crate::interceptors::Interceptor;
+use crate::interceptors::utils::shorten_path_display;
 use crate::proxy::Direction;
 
 /// Compressor for DAP `stackTrace` responses.
@@ -36,54 +42,48 @@ impl Interceptor for StackTraceCompressor {
         if let Some(ref mut body) = msg.body
             && let Some(frames) = body.get_mut("stackFrames").and_then(|v| v.as_array_mut())
         {
+            // 1. Filter out synthetic frames (label/subtle presentation hint)
+            frames.retain(|frame| {
+                let hint = frame.get("presentationHint").and_then(|v| v.as_str());
+                !matches!(hint, Some("label") | Some("subtle"))
+            });
+
+            // Track previous frame's source path for dedup
+            let mut prev_source_path: Option<String> = None;
+
             for frame in frames.iter_mut() {
-                if let Some(source) = frame.get_mut("source")
-                    && let Some(path) = source.get("path").and_then(|v| v.as_str())
-                    && let Ok(Some(filename)) = filename_from_path(path)
-                {
-                    source["path"] = serde_json::Value::String(shorten_path(path, &filename));
+                // 2. Source path abbreviation + dedup
+                if let Some(src_obj) = frame.get_mut("source").and_then(|v| v.as_object_mut()) {
+                    let path_owned = src_obj
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+                    if let Some(ref path) = path_owned {
+                        let is_dup = prev_source_path.as_deref() == Some(path.as_str());
+                        if is_dup {
+                            src_obj.insert("path".into(), serde_json::Value::String(String::new()));
+                        } else {
+                            let shortened = shorten_path_display(path);
+                            src_obj.insert("path".into(), serde_json::Value::String(shortened));
+                        }
+                        prev_source_path = Some(path.clone());
+                    }
                 }
 
+                // 3. Trim function name — strip parameters
                 if let Some(name) = frame.get("name").and_then(|v| v.as_str()) {
                     let trimmed = trim_function_name(name);
                     frame["name"] = serde_json::Value::String(trimmed);
                 }
+
+                // 4. Prune noise fields
+                if let Some(obj) = frame.as_object_mut() {
+                    obj.remove("instructionPointerReference");
+                    obj.remove("moduleId");
+                }
             }
         }
         Ok(Some(msg))
-    }
-}
-
-/// Extract filename from a path string.
-fn filename_from_path(path: &str) -> Result<Option<String>, std::convert::Infallible> {
-    if let Some(name) = path.rsplit('/').next() {
-        Ok(Some(name.to_string()))
-    } else if let Some(name) = path.rsplit('\\').next() {
-        Ok(Some(name.to_string()))
-    } else {
-        Ok(Some(path.to_string()))
-    }
-}
-
-/// Shorten a path to `dir/filename` or `.../dir/filename`.
-fn shorten_path(path: &str, filename: &str) -> String {
-    // If the path has a parent directory, try dir/filename
-    let parent = path
-        .trim_end_matches(filename)
-        .trim_end_matches('/')
-        .trim_end_matches('\\');
-
-    if parent.is_empty() {
-        return filename.to_string();
-    }
-
-    // Get the last directory component
-    if let Some(dir) = parent.rsplit('/').next() {
-        format!("{dir}/{filename}")
-    } else if let Some(dir) = parent.rsplit('\\').next() {
-        format!("{dir}/{filename}")
-    } else {
-        format!("{parent}/{filename}")
     }
 }
 
@@ -103,28 +103,159 @@ fn trim_function_name(name: &str) -> String {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_shorten_path() {
-        let path = "/home/user/project/src/main.rs";
-        let filename = "main.rs";
-        assert_eq!(shorten_path(path, filename), "src/main.rs");
+    fn make_frame(name: &str, path: &str, hint: Option<&str>) -> serde_json::Value {
+        let mut frame = serde_json::json!({
+            "id": 0,
+            "name": name,
+            "source": {
+                "path": path,
+                "name": path.rsplit('/').next().unwrap_or(path),
+            },
+            "line": 1,
+            "column": 1,
+            "instructionPointerReference": "0x7ffff7a3d8af",
+            "moduleId": 42,
+        });
+        if let Some(h) = hint {
+            frame["presentationHint"] = serde_json::Value::String(h.into());
+        }
+        frame
+    }
+
+    #[tokio::test]
+    async fn test_stacktrace_path_abbreviation() {
+        let compressor = StackTraceCompressor;
+        let frames =
+            serde_json::json!([make_frame("main", "/home/user/project/src/main.rs", None)]);
+        let msg = DapMessage {
+            seq: 1,
+            msg_type: "response".into(),
+            command: Some("stackTrace".into()),
+            event: None,
+            request_seq: Some(1),
+            success: Some(true),
+            body: Some(serde_json::json!({ "stackFrames": frames })),
+            arguments: None,
+        };
+        let result = compressor
+            .intercept(msg, Direction::ServerToClient)
+            .await
+            .unwrap()
+            .unwrap();
+        let body = result.body.unwrap();
+        let frame = &body["stackFrames"][0];
+        assert_eq!(frame["source"]["path"], "src/main.rs");
+    }
+
+    #[tokio::test]
+    async fn test_stacktrace_filters_label_frames() {
+        let compressor = StackTraceCompressor;
+        let frames = serde_json::json!([
+            make_frame("real_func", "/home/user/src/main.rs", None),
+            make_frame("label_frame", "/home/user/src/main.rs", Some("label")),
+            make_frame("subtle_frame", "/home/user/src/main.rs", Some("subtle")),
+        ]);
+        let msg = DapMessage {
+            seq: 1,
+            msg_type: "response".into(),
+            command: Some("stackTrace".into()),
+            event: None,
+            request_seq: Some(1),
+            success: Some(true),
+            body: Some(serde_json::json!({ "stackFrames": frames })),
+            arguments: None,
+        };
+        let result = compressor
+            .intercept(msg, Direction::ServerToClient)
+            .await
+            .unwrap()
+            .unwrap();
+        let body = result.body.unwrap();
+        let remaining = body["stackFrames"].as_array().unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0]["name"], "real_func");
+    }
+
+    #[tokio::test]
+    async fn test_stacktrace_source_dedup() {
+        let compressor = StackTraceCompressor;
+        let frames = serde_json::json!([
+            make_frame("func_a", "/home/user/src/main.rs", None),
+            make_frame("func_b", "/home/user/src/main.rs", None),
+            make_frame("func_c", "/home/user/src/other.rs", None),
+        ]);
+        let msg = DapMessage {
+            seq: 1,
+            msg_type: "response".into(),
+            command: Some("stackTrace".into()),
+            event: None,
+            request_seq: Some(1),
+            success: Some(true),
+            body: Some(serde_json::json!({ "stackFrames": frames })),
+            arguments: None,
+        };
+        let result = compressor
+            .intercept(msg, Direction::ServerToClient)
+            .await
+            .unwrap()
+            .unwrap();
+        let body = result.body.unwrap();
+        let remaining = body["stackFrames"].as_array().unwrap();
+        // First frame: shortened path
+        assert_eq!(remaining[0]["source"]["path"], "src/main.rs");
+        // Second frame (same file): empty path (dedup marker)
+        assert_eq!(remaining[1]["source"]["path"], "");
+        // Third frame (different file): new path
+        assert_eq!(remaining[2]["source"]["path"], "src/other.rs");
+    }
+
+    #[tokio::test]
+    async fn test_stacktrace_prunes_noise_fields() {
+        let compressor = StackTraceCompressor;
+        let frames = serde_json::json!([make_frame("main", "/home/user/main.rs", None)]);
+        let msg = DapMessage {
+            seq: 1,
+            msg_type: "response".into(),
+            command: Some("stackTrace".into()),
+            event: None,
+            request_seq: Some(1),
+            success: Some(true),
+            body: Some(serde_json::json!({ "stackFrames": frames })),
+            arguments: None,
+        };
+        let result = compressor
+            .intercept(msg, Direction::ServerToClient)
+            .await
+            .unwrap()
+            .unwrap();
+        let body = result.body.unwrap();
+        let frame = &body["stackFrames"][0];
+        let obj = frame.as_object().unwrap();
+        assert!(!obj.contains_key("instructionPointerReference"));
+        assert!(!obj.contains_key("moduleId"));
     }
 
     #[test]
-    fn test_trim_function_name() {
+    fn test_trim_function_name_with_params() {
         assert_eq!(trim_function_name("my_func(a, b)"), "my_func(...)");
         assert_eq!(trim_function_name("simple"), "simple");
+        assert_eq!(trim_function_name(""), "");
     }
 
-    #[test]
-    fn test_filename_from_path_unix() {
-        let (path, filename) = (
-            "/home/user/src/main.rs",
-            filename_from_path("/home/user/src/main.rs")
-                .unwrap()
-                .unwrap(),
-        );
-        assert_eq!(filename, "main.rs");
-        assert_eq!(shorten_path(path, &filename), "src/main.rs");
+    #[tokio::test]
+    async fn test_applies_to_stacktrace_response() {
+        let compressor = StackTraceCompressor;
+        let msg = DapMessage {
+            seq: 1,
+            msg_type: "response".into(),
+            command: Some("stackTrace".into()),
+            event: None,
+            request_seq: Some(1),
+            success: Some(true),
+            body: None,
+            arguments: None,
+        };
+        assert!(compressor.applies_to(&msg, Direction::ServerToClient));
+        assert!(!compressor.applies_to(&msg, Direction::ClientToServer));
     }
 }

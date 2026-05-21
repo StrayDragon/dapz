@@ -19,11 +19,11 @@ fn bench_output_compression(c: &mut Criterion) {
         event: Some("output".into()),
         request_seq: None,
         success: None,
-        body: None,
-        arguments: Some(serde_json::json!({
+        body: Some(serde_json::json!({
             "category": "stdout",
             "output": "line1\nline2\nline2\nline3\nline3\nline3\nline4\n",
         })),
+        arguments: None,
     };
 
     c.bench_function("output_compress", |b| {

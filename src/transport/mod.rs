@@ -6,10 +6,10 @@
 //!
 //! | Transport | Protocol | Feature Flag | Status |
 //! |-----------|----------|-------------|--------|
-//! | [`StdioTransport`] | Child process stdio | always | ✅ |
-//! | [`TcpTransport`] | TCP socket | always | ✅ |
-//! | [`WsTransport`] | WebSocket | `transport-websocket` | planned |
-//! | [`MockTransport`] | In-memory FIFO | always (testing) | ✅ |
+//! | `StdioTransport` | Child process stdio | always | ✅ |
+//! | `TcpTransport` | TCP socket | always | ✅ |
+//! | `WsTransport` | WebSocket | `transport-websocket` | planned |
+//! | `MockTransport` | In-memory FIFO | always (testing) | ✅ |
 
 pub mod mock;
 pub mod stdio;

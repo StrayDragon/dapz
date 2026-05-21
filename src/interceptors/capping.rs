@@ -83,11 +83,11 @@ impl Interceptor for CappingInterceptor {
             }
             "event" => {
                 if self.max_output_length > 0
-                    && let Some(ref mut args) = msg.arguments
-                    && let Some(output) = args.get_mut("output").and_then(|v| v.as_str())
+                    && let Some(ref mut body) = msg.body
+                    && let Some(output) = body.get_mut("output").and_then(|v| v.as_str())
                 {
                     let truncated = truncate_text(output, self.max_output_length);
-                    args["output"] = serde_json::Value::String(truncated);
+                    body["output"] = serde_json::Value::String(truncated);
                 }
             }
             _ => {}

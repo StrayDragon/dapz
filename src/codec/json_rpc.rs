@@ -178,14 +178,16 @@ mod tests {
             event: Some("output".into()),
             request_seq: None,
             success: None,
-            body: None,
-            arguments: Some(serde_json::json!({
+            body: Some(serde_json::json!({
                 "category": "stdout",
                 "output": "hello world",
             })),
+            arguments: None,
         };
         let bytes = msg.to_bytes().unwrap();
         let parsed = DapMessage::from_frame(&bytes).unwrap();
         assert_eq!(parsed.event.as_deref(), Some("output"));
+        assert!(parsed.body.is_some());
+        assert_eq!(parsed.body.unwrap()["output"], "hello world");
     }
 }
