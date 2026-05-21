@@ -12,6 +12,7 @@ use clap::Parser;
 use dapz::interceptors::Interceptor;
 use dapz::interceptors::InterceptorChain;
 use dapz::interceptors::capping::CappingInterceptor;
+use dapz::interceptors::evaluate::EvaluateCompressor;
 use dapz::interceptors::output::OutputCompressor;
 use dapz::interceptors::stacktrace::StackTraceCompressor;
 use dapz::interceptors::variables::VariablesCompressor;
@@ -69,6 +70,22 @@ struct Cli {
         default_value_t = true
     )]
     compress_stacktrace: bool,
+
+    /// Enable evaluate response compression (default: true)
+    #[arg(
+        long = "compress-evaluate",
+        env = "DAPZ_ENABLE_EVALUATE_COMPRESS",
+        default_value_t = true
+    )]
+    compress_evaluate: bool,
+
+    /// Maximum evaluate result string length in chars (0 = unlimited)
+    #[arg(long, env = "DAPZ_MAX_EVALUATE_LENGTH", default_value_t = 500)]
+    max_evaluate_length: usize,
+
+    /// Maximum variable value string length in chars (0 = unlimited)
+    #[arg(long, env = "DAPZ_MAX_VALUE_LENGTH", default_value_t = 120)]
+    max_value_length: usize,
 
     /// Output format: json or passthrough
     #[arg(short, long, env = "DAPZ_OUTPUT_FORMAT", default_value = "json")]
@@ -128,10 +145,13 @@ fn build_config(args: &Cli, output_format: OutputFormat) -> Result<Config, ExitC
             max_frames: args.max_frames,
             max_variables: args.max_variables,
             max_output_length: args.max_output_length,
+            max_evaluate_length: args.max_evaluate_length,
+            max_value_length: args.max_value_length,
         })
         .enable_output_compress(args.compress_output)
         .enable_variables_compress(args.compress_variables)
         .enable_stacktrace_compress(args.compress_stacktrace)
+        .enable_evaluate_compress(args.compress_evaluate)
         .output_format(output_format)
         .log_level(&args.log_level)
         .build()
@@ -142,18 +162,20 @@ fn build_config(args: &Cli, output_format: OutputFormat) -> Result<Config, ExitC
 }
 
 fn build_interceptor_chain(shared_config: &Arc<RwLock<Config>>) -> InterceptorChain {
+    let config = shared_config.blocking_read();
     let interceptors: Vec<Box<dyn Interceptor>> = vec![
         Box::new(CappingInterceptor::new(
-            shared_config.blocking_read().capping.max_frames,
-            shared_config.blocking_read().capping.max_variables,
-            shared_config.blocking_read().capping.max_output_length,
+            config.capping.max_frames,
+            config.capping.max_variables,
+            config.capping.max_output_length,
         )),
         Box::new(OutputCompressor),
-        Box::new(VariablesCompressor),
+        Box::new(EvaluateCompressor::new(config.capping.max_evaluate_length)),
+        Box::new(VariablesCompressor::new(config.capping.max_value_length)),
         Box::new(StackTraceCompressor),
     ];
 
-    tracing::info!("Interceptor chain built: capping, output, variables, stacktrace");
+    tracing::info!("Interceptor chain built: capping, output, evaluate, variables, stacktrace");
 
     InterceptorChain::new(interceptors, shared_config.clone())
 }

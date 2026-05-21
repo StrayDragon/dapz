@@ -30,6 +30,10 @@ alias ci := qa
 fmt-check:
     cargo fmt -- --check
 
+# Run integration tests with debugpy (requires debugpy-adapter on PATH).
+test-integration:
+    cargo test --test debugpy_integration -- --ignored --test-threads=1
+
 # Run Criterion throughput benchmarks.
 bench:
     cargo bench

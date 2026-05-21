@@ -11,8 +11,10 @@
 //! [MermaidChart:../docs/mmd/interceptor-chain.mmd]
 
 pub mod capping;
+pub mod evaluate;
 pub mod output;
 pub mod stacktrace;
+pub mod utils;
 pub mod variables;
 
 use std::sync::Arc;
