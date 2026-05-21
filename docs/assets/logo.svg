@@ -1,0 +1,14 @@
+<svg width="200" height="200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="dapz logo">
+  <!-- D: Debug data input (thick raw pipe, D-shape, dark gray) -->
+  <path d="M4 4V20" stroke="#455A64" stroke-width="3.5" stroke-linecap="square"/>
+  <path d="M4 4C9 4 12 7 12 12C12 17 9 20 4 20" stroke="#455A64" stroke-width="3.5" fill="none" stroke-linecap="square"/>
+
+  <!-- Proxy adapter node (amber) -->
+  <circle cx="13.5" cy="12" r="2.5" fill="#FFC107"/>
+
+  <!-- Z: Zip compression (thin zigzag, green) -->
+  <path d="M15.5 7L21 7L15.5 12L21 17" stroke="#2ECC71" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Reverse proxy flow directional arrow (amber) -->
+  <path d="M11 18L13.5 20L16 18" stroke="#FFC107" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
