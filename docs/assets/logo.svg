@@ -1,14 +1,10 @@
-<svg width="200" height="200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="dapz logo">
-  <!-- D: Debug data input (thick raw pipe, D-shape, dark gray) -->
-  <path d="M4 4V20" stroke="#455A64" stroke-width="3.5" stroke-linecap="square"/>
-  <path d="M4 4C9 4 12 7 12 12C12 17 9 20 4 20" stroke="#455A64" stroke-width="3.5" fill="none" stroke-linecap="square"/>
-
-  <!-- Proxy adapter node (amber) -->
-  <circle cx="13.5" cy="12" r="2.5" fill="#FFC107"/>
-
-  <!-- Z: Zip compression (thin zigzag, green) -->
-  <path d="M15.5 7L21 7L15.5 12L21 17" stroke="#2ECC71" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-
-  <!-- Reverse proxy flow directional arrow (amber) -->
-  <path d="M11 18L13.5 20L16 18" stroke="#FFC107" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<svg width="200" height="200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- D型原始管道 (较粗) -->
+  <path d="M5 4V16M5 4C10 4 11 8 11 10C11 12 10 16 5 16H11" stroke="#455A64" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="round"/>
+  <!-- 代理中介节点 -->
+  <circle cx="12" cy="16" r="2.5" fill="#FFC107"/>
+  <!-- a型压缩管道 (保持原有的渐细与平滑曲率) -->
+  <path d="M13 16C13 13.5 14 12 15.5 12C17 12 17 13.5 17 16C17 16 15.5 16 13 16H17V10C17 7 19 4 21 4" stroke="#2ECC71" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 反向代理小箭头 -->
+  <path d="M10 19L12 21L14 19" stroke="#FFC107" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
