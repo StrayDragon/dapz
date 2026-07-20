@@ -1,0 +1,9 @@
+kind: llman.sdd.delta
+ops[3]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r39,AgentPool,"系统 MUST 在 feature agent-sdk 下提供 AgentPool，按 session key 管理多个 AgentHandle（DAP 会话；非 LSP language key）。",null,null,null
+  add_requirement,r40,懒加载会话,"AgentPool MUST 在首次使用某 session key 时懒启动对应 backend，不得在 start_all 时强制全部 spawn。",null,null,null
+  add_requirement,r41,Tier-0 委托,"AgentPool MUST 将 launch/get_stack/get_variables 等 Tier-0 调用委托给对应 AgentHandle，且 MUST NOT 暴露 LSP 文档同步 API。",null,null,null
+op_scenarios[3]{req_id,id,given,when,then}:
+  r39,"pool-register",AgentPoolBuilder,register 两个 session key 后 start_all,返回含两个已注册 backend 的 AgentPool
+  r40,"lazy-spawn",已 register 但未调用的 key,首次 get_stack 或 launch,才创建 AgentHandle
+  r41,"no-lsp-docs",查阅 AgentPool 公开 API,检查方法名,无 notify_change/get_diagnostics/workspace_root 专用 LSP API

@@ -30,6 +30,15 @@ impl AgentHandle {
         AgentBuilder::default()
     }
 
+    /// Wrap an existing [`DapSession`] (unit tests / pool insertion helpers).
+    #[cfg(test)]
+    pub(crate) fn from_session(session: DapSession, compression: bool) -> Self {
+        Self {
+            session,
+            compression,
+        }
+    }
+
     async fn compress_response(&self, command: &str, body: Value) -> Value {
         if !self.compression {
             return body;
@@ -286,10 +295,7 @@ mod tests {
             .unwrap(),
         );
 
-        let mut agent = AgentHandle {
-            session: DapSession::with_transport(Box::new(mock)),
-            compression: true,
-        };
+        let mut agent = AgentHandle::from_session(DapSession::with_transport(Box::new(mock)), true);
         let out = agent.get_stack(Some(1), Some(10)).await.unwrap();
         assert!(out.contains("main") || out.contains("stackFrames") || out.contains("items"));
     }
