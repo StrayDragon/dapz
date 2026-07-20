@@ -1,6 +1,6 @@
 kind: llman.sdd.spec
 name: "agent-sdk"
-purpose: "Agent SDK：AgentHandle Tier-0 API（AgentPool 为后续 change）。"
+purpose: "Agent SDK：AgentHandle + session-key AgentPool（DAP；非 LSP language pool）。"
 valid_scope[2]: src/agent_sdk/,tests/
 requirements[7]{req_id,title,statement}:
   r7,AgentHandle,"系统 MUST 在 feature agent-sdk 下提供 AgentHandle 管理单个 DAP 会话。"

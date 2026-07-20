@@ -1,0 +1,7 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r42,doc-check 门禁,"just qa MUST 包含 cargo doc --no-deps --all-features（doc-check），确保公共 API 文档可构建。",null,null,null
+  add_requirement,r43,verify 全量门禁,"项目 MUST 提供 just verify（或等价脚本）运行 qa、llman sdd validate --all --strict，并在本地准发布路径可用。",null,null,null
+op_scenarios[2]{req_id,id,given,when,then}:
+  r42,"doc-check-recipe",打开 justfile,查看 qa 依赖,包含 doc-check 目标
+  r43,"verify-script",运行 just verify（或 scripts/verify-all.sh）,完成校验,退出码 0 或明确失败于子步骤
