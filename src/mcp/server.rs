@@ -32,7 +32,7 @@ use crate::proxy::Direction;
 
 // ─── Tool Definitions ──────────────────────────────────────────────────────
 
-fn tool_definitions() -> Vec<Tool> {
+pub(crate) fn tool_definitions() -> Vec<Tool> {
     vec![
         Tool::new(
             "debug_launch",
@@ -150,125 +150,125 @@ fn tool_count() -> usize {
 
 // ─── Input Types ───────────────────────────────────────────────────────────
 
-trait JsonSchema {
+pub(crate) trait JsonSchema {
     fn json_schema() -> Value;
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct DebugLaunchInput {
-    program: String,
-    cwd: Option<String>,
-    args: Option<Vec<String>>,
-    backend: Option<String>,
-    language: Option<String>,
+pub(crate) struct DebugLaunchInput {
+    pub program: String,
+    pub cwd: Option<String>,
+    pub args: Option<Vec<String>>,
+    pub backend: Option<String>,
+    pub language: Option<String>,
     /// Breakpoints: list of { path, lines }
-    breakpoints: Option<Vec<BreakpointSpec>>,
-    backend_args: Option<Vec<String>>,
+    pub breakpoints: Option<Vec<BreakpointSpec>>,
+    pub backend_args: Option<Vec<String>>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct BreakpointSpec {
-    path: String,
-    lines: Vec<i64>,
+pub(crate) struct BreakpointSpec {
+    pub path: String,
+    pub lines: Vec<i64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct DebugAttachInput {
+pub(crate) struct DebugAttachInput {
     /// Adapter-specific attach arguments (passed as DAP attach body).
-    arguments: Value,
-    backend: Option<String>,
-    language: Option<String>,
-    cwd: Option<String>,
-    backend_args: Option<Vec<String>>,
+    pub arguments: Value,
+    pub backend: Option<String>,
+    pub language: Option<String>,
+    pub cwd: Option<String>,
+    pub backend_args: Option<Vec<String>>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct SetExceptionBreakpointsInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    filters: Vec<String>,
+pub(crate) struct SetExceptionBreakpointsInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub filters: Vec<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct GetSourceInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    source_reference: i64,
-    path: Option<String>,
+pub(crate) struct GetSourceInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub source_reference: i64,
+    pub path: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct SessionRefInput {
-    backend: Option<String>,
-    cwd: Option<String>,
+pub(crate) struct SessionRefInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct ThreadInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    thread_id: Option<i64>,
+pub(crate) struct ThreadInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub thread_id: Option<i64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct SetBreakpointsInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    source: String,
-    lines: Vec<i64>,
+pub(crate) struct SetBreakpointsInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub source: String,
+    pub lines: Vec<i64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct GetStackInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    thread_id: Option<i64>,
-    levels: Option<i64>,
+pub(crate) struct GetStackInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub thread_id: Option<i64>,
+    pub levels: Option<i64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct GetScopesInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    frame_id: i64,
+pub(crate) struct GetScopesInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub frame_id: i64,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct GetVariablesInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    variables_reference: i64,
+pub(crate) struct GetVariablesInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub variables_reference: i64,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct EvaluateInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    expression: String,
-    frame_id: Option<i64>,
-    context: Option<String>,
+pub(crate) struct EvaluateInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub expression: String,
+    pub frame_id: Option<i64>,
+    pub context: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct WaitStoppedInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    timeout_ms: Option<u64>,
+pub(crate) struct WaitStoppedInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub timeout_ms: Option<u64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct DisconnectInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    terminate_debuggee: Option<bool>,
+pub(crate) struct DisconnectInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub terminate_debuggee: Option<bool>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct SendRawInput {
-    backend: Option<String>,
-    cwd: Option<String>,
-    command: String,
-    arguments: Option<Value>,
+pub(crate) struct SendRawInput {
+    pub backend: Option<String>,
+    pub cwd: Option<String>,
+    pub command: String,
+    pub arguments: Option<Value>,
 }
 
 impl JsonSchema for DebugLaunchInput {
@@ -485,7 +485,7 @@ impl JsonSchema for SendRawInput {
 
 // ─── Compression helpers ───────────────────────────────────────────────────
 
-async fn compress_response(command: &str, body: Value) -> Value {
+pub(crate) async fn compress_response(command: &str, body: Value) -> Value {
     let msg = DapMessage {
         seq: 1,
         msg_type: "response".into(),
@@ -516,7 +516,7 @@ async fn compress_response(command: &str, body: Value) -> Value {
     }
 }
 
-async fn compress_output_events(events: Vec<Value>) -> Value {
+pub(crate) async fn compress_output_events(events: Vec<Value>) -> Value {
     let mut compressed = Vec::new();
     for body in events {
         let msg = DapMessage {
@@ -540,11 +540,13 @@ async fn compress_output_events(events: Vec<Value>) -> Value {
     json!({ "outputs": compressed })
 }
 
-fn to_toon(value: &Value) -> Result<String, ErrorData> {
+pub(crate) fn to_toon(value: &Value) -> Result<String, ErrorData> {
     value_to_toon(value).map_err(|e| ErrorData::internal_error(e.to_string(), None))
 }
 
-fn parse_args<T: serde::de::DeserializeOwned>(arguments: Option<Value>) -> Result<T, ErrorData> {
+pub(crate) fn parse_args<T: serde::de::DeserializeOwned>(
+    arguments: Option<Value>,
+) -> Result<T, ErrorData> {
     let obj = match arguments {
         Some(Value::Object(map)) => Value::Object(map),
         Some(other) => other,
@@ -553,7 +555,7 @@ fn parse_args<T: serde::de::DeserializeOwned>(arguments: Option<Value>) -> Resul
     serde_json::from_value(obj).map_err(|e| ErrorData::invalid_request(e.to_string(), None))
 }
 
-fn resolve_backend(
+pub(crate) fn resolve_backend(
     program: Option<&str>,
     language: Option<&str>,
     backend: Option<&str>,

@@ -1,0 +1,7 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r53,dap invoke remove,"daemon MUST 支持 dap/invoke（高阶 DapSession 操作）与 dap/remove；dap/spawn MUST 支持 replace 以重建会话。",null,null,null
+  modify_requirement,r50,dap RPC 扩展,"daemon MUST 支持 dap/spawn、dap/request、dap/wait_event、dap/invoke、dap/remove、daemon/status、daemon/shutdown。",null,null,null
+op_scenarios[2]{req_id,id,given,when,then}:
+  r53,"invoke-launch",已 spawn 的 session,dap/invoke launch_program,返回 stopped 体
+  r50,"rpc-has-invoke",daemon 协议,检查方法表,含 dap/invoke 与 dap/remove

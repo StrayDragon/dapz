@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r27,三模态加 daemon,"系统 MUST 支持 Library、Proxy CLI、MCP，并 MAY 提供 daemon 长驻 DAP session 管理（无 LSP 文档同步）。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r27,"daemon-mode",运行 dapz daemon,MCP 或其他客户端连接 socket,可复用 DAP 会话

@@ -1,8 +1,9 @@
-//! CLI entry point for dapz — DAP compression proxy and MCP server.
+//! CLI entry point for dapz — DAP compression proxy, MCP server, and daemon.
 //!
 //! ```bash
 //! dapz proxy --backend "python3 -m debugpy.adapter"
-//! dapz mcp   # requires --features mcp
+//! dapz mcp    # requires --features mcp
+//! dapz daemon # requires --features mcp — long-lived DAP session manager
 //! ```
 
 use std::process::ExitCode;
@@ -38,6 +39,39 @@ enum Commands {
     /// Run as an MCP server exposing debug tools (requires `--features mcp`).
     #[command(name = "mcp")]
     Mcp(McpArgs),
+    /// Run a long-lived DAP session daemon (requires `--features mcp`).
+    #[command(name = "daemon", alias = "d")]
+    Daemon(DaemonArgs),
+}
+
+/// Arguments for `dapz daemon`.
+#[derive(Parser, Debug)]
+struct DaemonArgs {
+    /// Project cwd used to derive the Unix socket path (DAP, not LSP roots).
+    #[arg(long, env = "DAPZ_DAEMON_CWD", default_value = ".")]
+    cwd: String,
+
+    /// Explicit socket path (overrides cwd-derived path).
+    #[arg(long, env = "DAPZ_DAEMON_SOCKET")]
+    socket: Option<String>,
+
+    /// Log level
+    #[arg(short, long, env = "DAPZ_LOG_LEVEL", default_value = "info")]
+    log_level: String,
+
+    #[command(subcommand)]
+    command: Option<DaemonCommand>,
+}
+
+/// Subcommands for `dapz daemon`.
+#[derive(Subcommand, Debug)]
+enum DaemonCommand {
+    /// Print daemon status JSON for a cwd/socket.
+    List {
+        /// Emit TOON instead of JSON.
+        #[arg(long)]
+        toon: bool,
+    },
 }
 
 /// Arguments for `dapz proxy`.
@@ -126,6 +160,14 @@ struct McpArgs {
     /// Log level
     #[arg(short, long, env = "DAPZ_LOG_LEVEL", default_value = "info")]
     log_level: String,
+
+    /// Use in-process adapters instead of auto-connecting to `dapz daemon`.
+    #[arg(long)]
+    no_daemon: bool,
+
+    /// Project cwd for daemon socket identity (default: current directory).
+    #[arg(long, env = "DAPZ_DAEMON_CWD")]
+    cwd: Option<String>,
 }
 
 #[tokio::main]
@@ -135,6 +177,7 @@ async fn main() -> ExitCode {
     match cli.command {
         Commands::Proxy(args) => run_proxy(args).await,
         Commands::Mcp(args) => run_mcp(args).await,
+        Commands::Daemon(args) => run_daemon(args).await,
     }
 }
 
@@ -199,22 +242,47 @@ async fn run_mcp(args: McpArgs) -> ExitCode {
             .with_target(false)
             .init();
 
-        use dapz::mcp::McpServer;
         use rmcp::ServiceExt;
         use rmcp::transport::stdio;
 
-        let server = McpServer::new();
-        match server.serve(stdio()).await {
-            Ok(running) => {
-                if let Err(e) = running.waiting().await {
-                    tracing::error!(error = %e, "MCP server stopped with error");
-                    return ExitCode::FAILURE;
+        if args.no_daemon {
+            use dapz::mcp::McpServer;
+            tracing::info!("Starting dapz MCP server (in-process, --no-daemon)");
+            let server = McpServer::new();
+            match server.serve(stdio()).await {
+                Ok(running) => {
+                    if let Err(e) = running.waiting().await {
+                        tracing::error!(error = %e, "MCP server stopped with error");
+                        return ExitCode::FAILURE;
+                    }
+                    ExitCode::SUCCESS
                 }
-                ExitCode::SUCCESS
+                Err(e) => {
+                    eprintln!("Failed to start MCP server: {e}");
+                    ExitCode::FAILURE
+                }
             }
-            Err(e) => {
-                eprintln!("Failed to start MCP server: {e}");
-                ExitCode::FAILURE
+        } else {
+            use dapz::mcp::DaemonMcpServer;
+            let cwd = args.cwd.unwrap_or_else(|| {
+                std::env::current_dir()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|_| ".".into())
+            });
+            tracing::info!(%cwd, "Starting dapz MCP server (daemon mode)");
+            let server = DaemonMcpServer::new(cwd);
+            match server.serve(stdio()).await {
+                Ok(running) => {
+                    if let Err(e) = running.waiting().await {
+                        tracing::error!(error = %e, "MCP server stopped with error");
+                        return ExitCode::FAILURE;
+                    }
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("Failed to start MCP server: {e}");
+                    ExitCode::FAILURE
+                }
             }
         }
     }
@@ -225,6 +293,78 @@ async fn run_mcp(args: McpArgs) -> ExitCode {
         eprintln!(
             "MCP support is not enabled.\n\
              Rebuild with `cargo build --features mcp` to enable MCP support."
+        );
+        ExitCode::FAILURE
+    }
+}
+
+async fn run_daemon(args: DaemonArgs) -> ExitCode {
+    #[cfg(feature = "mcp")]
+    {
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::builder().parse_lossy(&args.log_level))
+            .with_target(false)
+            .init();
+
+        use dapz::daemon::{DaemonClient, DaemonServer, resolve_project_cwd, socket_path_for_cwd};
+
+        let cwd = resolve_project_cwd(&args.cwd);
+        let socket = args
+            .socket
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| socket_path_for_cwd(&cwd));
+
+        match args.command {
+            Some(DaemonCommand::List { toon }) => {
+                match DaemonClient::connect_or_start(&cwd).await {
+                    Ok(mut client) => match client.status().await {
+                        Ok(status) => {
+                            if toon {
+                                match dapz::value_to_toon(&status) {
+                                    Ok(t) => println!("{t}"),
+                                    Err(e) => {
+                                        eprintln!("{e}");
+                                        return ExitCode::FAILURE;
+                                    }
+                                }
+                            } else {
+                                println!(
+                                    "{}",
+                                    serde_json::to_string_pretty(&status).unwrap_or_default()
+                                );
+                            }
+                            ExitCode::SUCCESS
+                        }
+                        Err(e) => {
+                            eprintln!("daemon status failed: {e}");
+                            ExitCode::FAILURE
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("cannot connect to daemon: {e}");
+                        ExitCode::FAILURE
+                    }
+                }
+            }
+            None => {
+                let server = DaemonServer::new(socket);
+                match server.start().await {
+                    Ok(()) => ExitCode::SUCCESS,
+                    Err(e) => {
+                        eprintln!("daemon failed: {e}");
+                        ExitCode::FAILURE
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(not(feature = "mcp"))]
+    {
+        let _ = args;
+        eprintln!(
+            "Daemon mode is not enabled.\n\
+             Rebuild with `cargo build --features mcp` to enable daemon support."
         );
         ExitCode::FAILURE
     }

@@ -1,0 +1,11 @@
+kind: llman.sdd.delta
+ops[4]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r48,DAP daemon,"系统 MUST 在 feature mcp 下提供长驻 daemon，通过 Unix socket NDJSON JSON-RPC 管理 DAP adapter 会话。",null,null,null
+  add_requirement,r49,socket 按 cwd,"daemon socket 路径 MUST 由规范化 project cwd 派生（~/.cache/dapz/），不得使用 LSP workspace roots 模型。",null,null,null
+  add_requirement,r50,dap RPC,"daemon MUST 支持 dap/spawn、dap/request、dap/wait_event、daemon/status、daemon/shutdown。",null,null,null
+  add_requirement,r51,会话 key,"daemon 会话 MUST 使用 backend[+cwd] pool_key（与 DapPool 一致），不得按 LSP language id 建会话。",null,null,null
+op_scenarios[4]{req_id,id,given,when,then}:
+  r48,"cli-daemon",features mcp,运行 dapz daemon,进程监听 Unix socket
+  r49,"stable-socket",同一 cwd 两种路径拼写,计算 socket_path,得到相同路径
+  r50,"rpc-methods",daemon 协议,检查方法表,含 dap/spawn 与 daemon/shutdown
+  r51,"pool-key",spawn backend+cwd,创建会话,"key 等于 pool_key(backend,cwd)"

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.0 (2026-07-20)
+
+Long-lived DAP daemon + MCP auto-connect (aligned with lspz; DAP cwd/session model).
+
+- **Daemon** (`--features mcp`): `dapz daemon` / `dapz daemon list`；Unix socket NDJSON（`dap/spawn`、`dap/request`、`dap/wait_event`、`dap/invoke`、`dap/remove`、`daemon/status`、`daemon/shutdown`）；socket 按 project cwd（`~/.cache/dapz/`）
+- **MCP**: 默认 `DaemonMcpServer`（自动连接/启动 daemon）；`--no-daemon` 回退进程内 `McpServer`；可选 `--cwd` / `DAPZ_DAEMON_CWD`
+- **SDD**: `add-daemon` + `add-mcp-daemon-connect` archived；BDD 仍关闭
+- **Docs**: README 三模态含 daemon；`_PLAN.md` P5 完成
+
 ## v0.2.0 (2026-07-20)
 
 Align dapz closer to lspz maturity for DAP/debugpy (BDD-off SDD).

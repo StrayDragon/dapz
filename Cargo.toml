@@ -1,6 +1,6 @@
 [package]
 name = "dapz"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/StrayDragon/dapz"
@@ -29,6 +29,7 @@ notify = "8"
 shell-words = "1.1"
 
 # CLI (optional)
+dirs = "6"
 clap = { version = "4", optional = true, features = ["derive", "env"] }
 tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter"] }
 
