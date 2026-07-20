@@ -73,6 +73,16 @@ impl DapPool {
     pub fn remove(&mut self, key: &str) -> Option<Arc<Mutex<DapSession>>> {
         self.sessions.remove(key)
     }
+
+    /// Drop all sessions (kills adapter children via Drop).
+    pub fn clear(&mut self) {
+        self.sessions.clear();
+    }
+
+    /// List session keys currently in the pool.
+    pub fn keys(&self) -> Vec<String> {
+        self.sessions.keys().cloned().collect()
+    }
 }
 
 #[cfg(test)]

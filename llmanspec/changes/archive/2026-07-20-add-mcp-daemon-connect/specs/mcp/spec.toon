@@ -1,0 +1,8 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r52,MCP 默认 daemon,"系统 MUST 默认使 dapz mcp 经 DaemonMcpServer 连接或自动启动 dapz daemon；MUST 提供 --no-daemon 回退进程内 McpServer。",null,null,null
+  modify_requirement,r10,MCP 双模式,"系统 MUST 在 feature mcp 下实现 MCP 服务器（daemon 默认或 --no-daemon 进程内）并暴露 Tier-0 调试工具。",null,null,null
+op_scenarios[3]{req_id,id,given,when,then}:
+  r52,"mcp-daemon-default",features mcp,运行 dapz mcp 无 --no-daemon,工具调用经 daemon socket
+  r52,"mcp-no-daemon",传 --no-daemon,运行 dapz mcp,使用进程内 DapPool
+  r10,"mcp-start",启用 features mcp,运行 dapz mcp,进程以 MCP stdio 服务运行

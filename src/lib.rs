@@ -22,6 +22,9 @@ pub mod proxy;
 pub mod transport;
 
 #[cfg(feature = "mcp")]
+pub mod daemon;
+
+#[cfg(feature = "mcp")]
 pub mod mcp;
 
 #[cfg(feature = "agent-sdk")]

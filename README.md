@@ -75,11 +75,13 @@ dapz proxy --backend "python3 -m debugpy.adapter"
 dapz proxy --output toon --backend "python3 -m debugpy.adapter"
 ```
 
-**MCP 服务器** — 把调试能力暴露给 Cursor 等 Agent：
+**MCP 服务器** — 把调试能力暴露给 Cursor 等 Agent（默认经 daemon 复用会话）：
 
 ```bash
 cargo install dapz --features mcp
-dapz mcp
+dapz mcp                 # 自动连接/启动 dapz daemon（按项目 cwd）
+dapz mcp --no-daemon     # 进程内 adapter（不经 daemon）
+dapz daemon              # 单独长驻；dapz daemon list 查看状态
 ```
 
 工具：`debug_launch` / `debug_attach` → `get_stack` / `get_scopes` / `get_variables` / `evaluate` / `get_exception` → `step_*` / `continue` → `disconnect`（21 tools；详见 `_PLAN.md` §3）。
@@ -87,7 +89,7 @@ dapz mcp
 **Agent SDK** — 嵌入 Rust Agent：
 
 ```toml
-dapz = { version = "0.1", default-features = false, features = ["agent-sdk"] }
+dapz = { version = "0.3", default-features = false, features = ["agent-sdk"] }
 ```
 
 ```rust
@@ -105,7 +107,7 @@ let stack = agent.get_stack(Some(1), Some(20)).await?;
 
 ```toml
 [dependencies]
-dapz = { version = "0.1", default-features = false }
+dapz = { version = "0.3", default-features = false }
 ```
 
 ```rust
