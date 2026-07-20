@@ -1,14 +1,20 @@
 kind: llman.sdd.spec
 name: "agent-sdk"
-purpose: Agent SDK：AgentHandle Tier-0 API（AgentPool 为后续 change）。
+purpose: "Agent SDK：AgentHandle Tier-0 API（AgentPool 为后续 change）。"
 valid_scope[2]: src/agent_sdk/,tests/
-requirements[4]{req_id,title,statement}:
+requirements[7]{req_id,title,statement}:
   r7,AgentHandle,"系统 MUST 在 feature agent-sdk 下提供 AgentHandle 管理单个 DAP 会话。"
   r15,"Tier-0 方法",AgentHandle MUST 提供 launch、set_breakpoints、continue_、step_*、pause、get_threads、get_stack、get_scopes、get_variables、evaluate、drain_output、wait_stopped、disconnect、terminate、send_raw。
   r23,TOON 返回,观测类方法 MUST 返回 TOON 字符串（或等价紧凑表示）。
   r31,无专用 attach API,AgentHandle MUST NOT 提供 attach/source/exceptionInfo 专用方法（可用 send_raw）。
-scenarios[4]{req_id,id,given,when,then,feature}:
+  r39,AgentPool,"系统 MUST 在 feature agent-sdk 下提供 AgentPool，按 session key 管理多个 AgentHandle（DAP 会话；非 LSP language key）。"
+  r40,懒加载会话,AgentPool MUST 在首次使用某 session key 时懒启动对应 backend，不得在 start_all 时强制全部 spawn。
+  r41,"Tier-0 委托","AgentPool MUST 将 launch/get_stack/get_variables 等 Tier-0 调用委托给对应 AgentHandle，且 MUST NOT 暴露 LSP 文档同步 API。"
+scenarios[7]{req_id,id,given,when,then,feature}:
   r7,"agent-start","AgentHandle::builder 配置 backend",调用 start,返回可用句柄,false
   r15,"debug-loop",fixture 脚本与断点,launch→get_stack→evaluate→disconnect,各步骤成功,false
   r23,"stack-toon",get_stack,成功返回,内容为 TOON,false
   r31,"no-attach-method",查阅 AgentHandle API,检查公开方法,无 attach/get_source/get_exception,false
+  r39,"pool-register",AgentPoolBuilder,register 两个 session key 后 start_all,返回含两个已注册 backend 的 AgentPool,true
+  r40,"lazy-spawn",已 register 但未调用的 key,首次 get_stack 或 launch,才创建 AgentHandle,true
+  r41,"no-lsp-docs",查阅 AgentPool 公开 API,检查方法名,无 notify_change/get_diagnostics/workspace_root 专用 LSP API,true

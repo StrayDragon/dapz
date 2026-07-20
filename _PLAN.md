@@ -249,6 +249,7 @@ main()
 | 2026-07-20 | `just qa`/clippy all-features 绿；`check-env` 缺 debugpy（预期） |
 | 2026-07-20 | **准发布 0.1.0**：发现 `~/.local/bin`+uv tools；修 debugpy late-initialized launch；`just harness` PASS；D4 透传测；tip 两边备案 |
 | 2026-07-20 | **SDD 引入**：`llmanspec/` + `.agents/skills`；`resolve_tool` 完备化；§9 v0.2；**P0 bootstrap specs archived** |
+| 2026-07-20 | **P1 AgentPool**：DAP session-key pool（对照 lspz language pool）；apply-cycle archived |
 
 ---
 
@@ -260,7 +261,7 @@ main()
 | 优先级 | 候选 change id | 对照 lspz | 说明 |
 |--------|----------------|-----------|------|
 | P0 | `docs-bootstrap-baseline-specs` | `llmanspec/specs/*` | ✅ 已 archive（2026-07-20）；9 条基线 capability |
-| P1 | `add-agent-sdk-pool` | `agent_sdk/pool.rs` | 独立 AgentPool（与 MCP pool 对称） |
+| P1 | `add-agent-sdk-pool` | `agent_sdk/pool.rs` | ✅ 已 archive：DAP **session key**（非 LSP language）；Tier-0 委托 |
 | P2 | `add-just-verify-doc-check` | `just verify` / `doc-check` | 工程门禁对齐 |
 | P3 | `add-metrics` | `metrics.rs` | 压缩比/延迟观测 |
 | P4 | `add-tier1-exception-apis` | MCP exception* | Tier-1 升一等公民（可选） |
