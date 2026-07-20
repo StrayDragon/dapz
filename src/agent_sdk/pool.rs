@@ -247,6 +247,48 @@ impl AgentPool {
             .await
     }
 
+    /// Attach on a session.
+    pub async fn attach(&mut self, session: &str, arguments: Value) -> Result<String, DapzError> {
+        self.handle_for(session).await?.attach(arguments).await
+    }
+
+    /// Source content on a session.
+    pub async fn get_source(
+        &mut self,
+        session: &str,
+        source_reference: i64,
+        path: Option<&str>,
+    ) -> Result<String, DapzError> {
+        self.handle_for(session)
+            .await?
+            .get_source(source_reference, path)
+            .await
+    }
+
+    /// Exception info on a session.
+    pub async fn get_exception(
+        &mut self,
+        session: &str,
+        thread_id: Option<i64>,
+    ) -> Result<String, DapzError> {
+        self.handle_for(session)
+            .await?
+            .get_exception(thread_id)
+            .await
+    }
+
+    /// Exception breakpoints on a session.
+    pub async fn set_exception_breakpoints(
+        &mut self,
+        session: &str,
+        filters: &[String],
+    ) -> Result<String, DapzError> {
+        self.handle_for(session)
+            .await?
+            .set_exception_breakpoints(filters)
+            .await
+    }
+
     /// Disconnect all live sessions (best-effort).
     pub async fn shutdown_all(mut self) -> Result<(), DapzError> {
         let keys: Vec<String> = self.handles.keys().cloned().collect();

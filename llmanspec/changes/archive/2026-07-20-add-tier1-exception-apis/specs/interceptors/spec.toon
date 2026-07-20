@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r47,ExceptionInfoCompressor,"系统 MUST 提供 ExceptionInfoCompressor，压缩 exceptionInfo 响应中的过长 details/堆栈噪声。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r47,"truncate-details",超长 exceptionInfo details,经 ExceptionInfoCompressor,details 被截断且保留 exceptionId/breakMode

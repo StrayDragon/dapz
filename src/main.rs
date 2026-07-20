@@ -280,11 +280,14 @@ fn build_interceptor_chain(shared_config: &Arc<RwLock<Config>>) -> InterceptorCh
         ))),
         wrap(Box::new(StackTraceCompressor)),
         wrap(Box::new(ScopesCompressor)),
+        wrap(Box::new(
+            dapz::interceptors::exception::ExceptionInfoCompressor::new(800),
+        )),
     ];
 
     tracing::info!(
         metrics = metrics_on,
-        "Interceptor chain built: capping, output, evaluate, variables, stacktrace, scopes"
+        "Interceptor chain built: capping, output, evaluate, variables, stacktrace, scopes, exceptionInfo"
     );
 
     InterceptorChain::new(interceptors, shared_config.clone())

@@ -338,6 +338,43 @@ impl DapSession {
         self.send_request("evaluate", args).await
     }
 
+    /// Attach to a running debuggee (DAP `attach`). Arguments are adapter-specific.
+    pub async fn attach(&mut self, arguments: Value) -> Result<Value, DapzError> {
+        let _ = self.initialize().await?;
+        let body = self.send_request("attach", arguments).await?;
+        let _ = self.configuration_done().await?;
+        Ok(body)
+    }
+
+    /// Fetch source content via DAP `source` (by `sourceReference` and optional path).
+    pub async fn get_source(
+        &mut self,
+        source_reference: i64,
+        path: Option<&str>,
+    ) -> Result<Value, DapzError> {
+        let mut args = json!({ "sourceReference": source_reference });
+        if let Some(p) = path {
+            args["source"] = json!({ "path": p, "sourceReference": source_reference });
+        }
+        self.send_request("source", args).await
+    }
+
+    /// DAP `exceptionInfo` for a thread.
+    pub async fn get_exception_info(&mut self, thread_id: Option<i64>) -> Result<Value, DapzError> {
+        let tid = thread_id.unwrap_or(1);
+        self.send_request("exceptionInfo", json!({ "threadId": tid }))
+            .await
+    }
+
+    /// DAP `setExceptionBreakpoints`.
+    pub async fn set_exception_breakpoints(
+        &mut self,
+        filters: &[String],
+    ) -> Result<Value, DapzError> {
+        self.send_request("setExceptionBreakpoints", json!({ "filters": filters }))
+            .await
+    }
+
     /// Drain buffered `output` event bodies (clears buffer).
     pub fn drain_output(&mut self) -> Vec<Value> {
         std::mem::take(&mut self.output_buffer)

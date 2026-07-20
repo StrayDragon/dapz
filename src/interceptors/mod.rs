@@ -12,6 +12,7 @@
 
 pub mod capping;
 pub mod evaluate;
+pub mod exception;
 pub mod output;
 pub mod scopes;
 pub mod stacktrace;

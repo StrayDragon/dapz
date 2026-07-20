@@ -1,16 +1,16 @@
 kind: llman.sdd.spec
 name: mcp
-purpose: MCP 服务器：Tier-0 调试工具与 DapPool 会话复用。
+purpose: "MCP 服务器：Tier-0 调试工具与 DapPool 会话复用。"
 valid_scope[2]: src/mcp/,tests/
 requirements[5]{req_id,title,statement}:
   r10,MCP 服务器,"系统 MUST 在 feature mcp 下实现 MCP 服务器并暴露 Tier-0 调试工具。"
-  r18,工具集合,系统 MUST 注册 debug_launch、set_breakpoints、continue、step_over、step_into、step_out、pause、get_threads、get_stack、get_scopes、get_variables、evaluate、get_output、wait_stopped、disconnect、terminate、send_raw。
+  r18,工具集合,"系统 MUST 注册 Tier-0 工具集以及 debug_attach、get_source、get_exception、set_exception_breakpoints、send_raw。"
   r26,会话池,系统 MUST 通过 DapPool 按 key 复用 DapSession。
   r33,默认 TOON,MCP 观测类工具输出 MUST 默认使用 TOON（或配置的紧凑格式）。
-  r37,"禁专用 Tier-1 API",系统 MUST NOT 注册 debug_attach、get_source、get_exception、set_exception_breakpoints 专用工具。
+  r37,"Tier-1 异常工具",系统 MUST 注册 debug_attach、get_source、get_exception、set_exception_breakpoints，并保留 send_raw。
 scenarios[5]{req_id,id,given,when,then,feature}:
   r10,"mcp-start",启用 features mcp,运行 dapz mcp,进程以 MCP stdio 服务运行,false
-  r18,"list-tools",MCP list_tools,检查名称集合,"恰好覆盖 Tier-0 17 tools（含 send_raw）",false
+  r18,"tool-count-21",list_tools,计数,恰好 21 个工具,true
   r26,"pool-reuse",相同 pool key 两次 debug_launch,获取会话,复用同一后端会话策略成立,false
   r33,"stack-toon",get_stack 成功,返回内容,为 TOON 文本而非冗长 JSON,false
-  r37,"no-cut-tools",list_tools,扫描名称,不含已砍专用 API,false
+  r37,"has-exception-tools",MCP list_tools,扫描名称,含 get_exception 与 debug_attach,true
