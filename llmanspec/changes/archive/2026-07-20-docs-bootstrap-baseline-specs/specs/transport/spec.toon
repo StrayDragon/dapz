@@ -1,0 +1,11 @@
+kind: llman.sdd.delta
+ops[4]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r1,Transport trait,系统 MUST 定义 Transport trait 包含异步 receive 与 send。,null,null,null
+  add_requirement,r2,"Content-Length 分帧","所有传输层 MUST 处理 Content-Length 分帧，且读取路径 cancel-safe。",null,null,null
+  add_requirement,r3,多协议支持,系统 MUST 支持 StdioTransport、TcpTransport、WsTransport。,null,null,null
+  add_requirement,r4,"Content-Length 上限","分帧读取 MUST 拒绝超过约定上限的 body，避免无界分配。",null,null,null
+op_scenarios[4]{req_id,id,given,when,then}:
+  r1,"trait-surface",Transport 实现,调用 receive/send,完成一帧读写
+  r2,"cancel-safe-frame",半包到达后任务取消再恢复,继续 read_frame,不丢失已读字节
+  r3,"stdio-default",默认 CLI proxy,创建 Transport,使用 StdioTransport 连接 backend
+  r4,"reject-oversized","Content-Length 过大",read_frame,返回错误且不分配完整 body
