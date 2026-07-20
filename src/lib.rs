@@ -17,6 +17,7 @@ pub mod codec;
 pub mod config;
 pub mod error;
 pub mod interceptors;
+pub mod metrics;
 pub mod proxy;
 pub mod transport;
 
@@ -40,6 +41,7 @@ pub use interceptors::output::OutputCompressor;
 pub use interceptors::scopes::ScopesCompressor;
 pub use interceptors::stacktrace::StackTraceCompressor;
 pub use interceptors::variables::VariablesCompressor;
+pub use metrics::{MeteredInterceptor, MetricsConfig, MetricsSnapshot, metrics_enabled_from_env};
 pub use proxy::{Direction, Proxy, State};
 pub use transport::Transport;
 pub use transport::stdio::StdioTransport;

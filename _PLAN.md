@@ -250,6 +250,8 @@ main()
 | 2026-07-20 | **准发布 0.1.0**：发现 `~/.local/bin`+uv tools；修 debugpy late-initialized launch；`just harness` PASS；D4 透传测；tip 两边备案 |
 | 2026-07-20 | **SDD 引入**：`llmanspec/` + `.agents/skills`；`resolve_tool` 完备化；§9 v0.2；**P0 bootstrap specs archived** |
 | 2026-07-20 | **P1 AgentPool**：DAP session-key pool（对照 lspz language pool）；apply-cycle archived |
+| 2026-07-20 | **P2 verify/doc-check**：`just qa`+`verify`；与 lspz 对齐但 e2e 仍走 harness/debugpy |
+| 2026-07-20 | **P3 metrics**：DAP `MeteredInterceptor`（对照 lspz Metred*）；env 开关 |
 
 ---
 
@@ -263,7 +265,7 @@ main()
 | P0 | `docs-bootstrap-baseline-specs` | `llmanspec/specs/*` | ✅ 已 archive（2026-07-20）；9 条基线 capability |
 | P1 | `add-agent-sdk-pool` | `agent_sdk/pool.rs` | ✅ 已 archive：DAP **session key**（非 LSP language）；Tier-0 委托 |
 | P2 | `add-just-verify-doc-check` | `just verify` / `doc-check` | ✅ 已 archive：qa+doc-check；verify=SDD+prek；harness 仍管 debugpy |
-| P3 | `add-metrics` | `metrics.rs` | 压缩比/延迟观测 |
+| P3 | `add-metrics` | `metrics.rs` | ✅ 已 archive：`MeteredInterceptor` + `DAPZ_METRICS`；DAP 帧字节计量 |
 | P4 | `add-tier1-exception-apis` | MCP exception* | Tier-1 升一等公民（可选） |
 | P5 | `add-daemon` | `daemon/*` | 长驻 session（明确延后，需单独决策） |
 

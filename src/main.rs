@@ -18,6 +18,7 @@ use dapz::interceptors::output::OutputCompressor;
 use dapz::interceptors::scopes::ScopesCompressor;
 use dapz::interceptors::stacktrace::StackTraceCompressor;
 use dapz::interceptors::variables::VariablesCompressor;
+use dapz::metrics::{MeteredInterceptor, metrics_enabled_from_env};
 use dapz::{CappingConfig, Config, OutputFormat, Proxy, StdioTransport, Transport};
 use tokio::sync::RwLock;
 use tracing_subscriber::EnvFilter;
@@ -255,20 +256,34 @@ fn build_config(args: &ProxyArgs, output_format: OutputFormat) -> Result<Config,
 
 fn build_interceptor_chain(shared_config: &Arc<RwLock<Config>>) -> InterceptorChain {
     let config = shared_config.blocking_read();
+    let metrics_on = metrics_enabled_from_env();
+    let wrap = |inner: Box<dyn Interceptor>| -> Box<dyn Interceptor> {
+        if metrics_on {
+            Box::new(MeteredInterceptor::new(inner).enable())
+        } else {
+            inner
+        }
+    };
+
     let interceptors: Vec<Box<dyn Interceptor>> = vec![
-        Box::new(CappingInterceptor::new(
+        wrap(Box::new(CappingInterceptor::new(
             config.capping.max_frames,
             config.capping.max_variables,
             config.capping.max_output_length,
-        )),
-        Box::new(OutputCompressor),
-        Box::new(EvaluateCompressor::new(config.capping.max_evaluate_length)),
-        Box::new(VariablesCompressor::new(config.capping.max_value_length)),
-        Box::new(StackTraceCompressor),
-        Box::new(ScopesCompressor),
+        ))),
+        wrap(Box::new(OutputCompressor)),
+        wrap(Box::new(EvaluateCompressor::new(
+            config.capping.max_evaluate_length,
+        ))),
+        wrap(Box::new(VariablesCompressor::new(
+            config.capping.max_value_length,
+        ))),
+        wrap(Box::new(StackTraceCompressor)),
+        wrap(Box::new(ScopesCompressor)),
     ];
 
     tracing::info!(
+        metrics = metrics_on,
         "Interceptor chain built: capping, output, evaluate, variables, stacktrace, scopes"
     );
 

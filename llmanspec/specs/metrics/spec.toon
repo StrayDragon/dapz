@@ -1,0 +1,12 @@
+kind: llman.sdd.spec
+name: metrics
+purpose: DAP 拦截链运行时指标（字节/延迟/压缩比；非 LSP diagnostics metrics）。
+valid_scope[3]: src/metrics.rs,src/main.rs,tests/
+requirements[3]{req_id,title,statement}:
+  r44,MeteredInterceptor,系统 MUST 提供 MeteredInterceptor，在启用时记录 DAP 消息输入/输出字节、延迟与失败数。
+  r45,默认关闭,Metrics 默认 MUST 关闭；仅当 DAPZ_METRICS 显式启用时 proxy 拦截链才包装计量（零开销默认路径）。
+  r46,压缩比快照,MetricsSnapshot MUST 提供 compression_ratio 与 summary，便于 tracing 观测 DAP 压缩效果。
+scenarios[3]{req_id,id,given,when,then,feature}:
+  r44,"record-sizes",启用的 MeteredInterceptor,处理一条 ServerToClient DAP 消息,messages_processed 增 1 且字节计数增加,true
+  r45,"disabled-zero",未 enable 的包装器,处理消息,计数保持 0,true
+  r46,ratio,input=200 output=50,调用 compression_ratio,返回约 0.75,true
