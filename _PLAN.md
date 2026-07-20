@@ -262,7 +262,7 @@ main()
 |--------|----------------|-----------|------|
 | P0 | `docs-bootstrap-baseline-specs` | `llmanspec/specs/*` | ✅ 已 archive（2026-07-20）；9 条基线 capability |
 | P1 | `add-agent-sdk-pool` | `agent_sdk/pool.rs` | ✅ 已 archive：DAP **session key**（非 LSP language）；Tier-0 委托 |
-| P2 | `add-just-verify-doc-check` | `just verify` / `doc-check` | 工程门禁对齐 |
+| P2 | `add-just-verify-doc-check` | `just verify` / `doc-check` | ✅ 已 archive：qa+doc-check；verify=SDD+prek；harness 仍管 debugpy |
 | P3 | `add-metrics` | `metrics.rs` | 压缩比/延迟观测 |
 | P4 | `add-tier1-exception-apis` | MCP exception* | Tier-1 升一等公民（可选） |
 | P5 | `add-daemon` | `daemon/*` | 长驻 session（明确延后，需单独决策） |

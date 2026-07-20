@@ -19,16 +19,32 @@ lint:
 test:
     cargo test --all-features
 
-# Run all checks (qa = fmt-check + lint + test).
-qa: fmt-check lint test
+# Run all checks (qa = fmt-check + lint + test + doc-check).
+qa: fmt-check lint test doc-check
     @echo "All checks passed!"
 
 alias check := qa
 alias ci := qa
 
+# Full verification (qa + SDD validate + prek).
+verify:
+    bash scripts/verify-all.sh
+
 # fmt-check only
 fmt-check:
     cargo fmt -- --check
+
+# Build API docs and open in browser.
+doc:
+    cargo doc --no-deps --all-features --open
+
+# Check API docs build without errors.
+doc-check:
+    cargo doc --no-deps --all-features
+
+# Run doc tests.
+doc-test:
+    cargo test --doc --all-features
 
 # Run integration tests with debugpy (requires debugpy-adapter on PATH).
 test-integration:
@@ -38,7 +54,7 @@ test-integration:
 harness-env:
     bash scripts/check-env.sh
 
-# Full local gate: env + fmt + clippy + test + ignored e2e.
+# Full local gate: env + fmt + clippy + test + ignored e2e (debugpy).
 harness:
     bash scripts/run-harness.sh
 

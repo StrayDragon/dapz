@@ -2,11 +2,15 @@ kind: llman.sdd.spec
 name: "ssot-rules"
 purpose: 文档 SSOT：AGENTS、计划优先级与路径发现 tip。
 valid_scope[4]: AGENTS.md,_PLAN.md,docs/,llmanspec/
-requirements[3]{req_id,title,statement}:
+requirements[5]{req_id,title,statement}:
   r13,AGENTS SSOT,项目 MUST 以根 AGENTS.md 为通用规范 SSOT，并保留 LLMANSPEC managed block。
   r21,计划优先级,文档优先级 MUST 为 AGENTS.md → docs/specs → docs/plan；准发布临时计划为 _PLAN.md。
   r29,路径发现 tip,"工具路径发现约定 MUST 记录于 docs/tips/00-tool-path-discovery.md 并与 adapters 实现对齐。"
-scenarios[3]{req_id,id,given,when,then,feature}:
+  r42,"doc-check 门禁","just qa MUST 包含 cargo doc --no-deps --all-features（doc-check），确保公共 API 文档可构建。"
+  r43,verify 全量门禁,"项目 MUST 提供 just verify（或等价脚本）运行 qa、llman sdd validate --all --strict，并在本地准发布路径可用。"
+scenarios[5]{req_id,id,given,when,then,feature}:
   r13,"managed-block",打开 AGENTS.md,查找 LLMANSPEC 标记,存在 START/END managed block,false
   r21,"plan-refs",阅读 _PLAN.md 与 ROADMAP,交叉引用,版本目标与 CLI 形态一致,false
   r29,"tip-aligned",对比 tip 搜索顺序与 resolve_tool,检查文档,顺序表一致,false
+  r42,"doc-check-recipe",打开 justfile,查看 qa 依赖,"包含 doc-check 目标",true
+  r43,"verify-script","运行 just verify（或 scripts/verify-all.sh）",完成校验,退出码 0 或明确失败于子步骤,true

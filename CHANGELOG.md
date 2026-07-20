@@ -2,9 +2,11 @@
 
 ## Unreleased
 
+- **Tooling**: `just qa` includes `doc-check`; `just verify` / `scripts/verify-all.sh` (SDD + prek)
+- **Agent SDK**: `AgentPool` / `AgentPoolBuilder` — multi-session DAP handles keyed by session name (not LSP language)
 - **Discovery**: generalized `resolve_tool` / `DiscoveryContext` (PATH → `~/.local/bin` → cargo/go/npm/bun defaults); mock-HOME unit tests; `check-env` clean-PATH probe
 - **Docs**: `_PLAN.md` §9 v0.2 SDD backlog; ROADMAP CLI/`just harness`; tip + README install notes
-- **SDD**: `llmanspec/` + `.agents/skills/llman-sdd-*` scaffolding
+- **SDD**: `llmanspec/` + `.agents/skills/llman-sdd-*` scaffolding; baseline specs; BDD-off
 
 ## v0.1.0 (2026-07-20)
 
