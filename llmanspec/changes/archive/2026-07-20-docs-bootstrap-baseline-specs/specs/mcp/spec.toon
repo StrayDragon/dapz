@@ -1,0 +1,13 @@
+kind: llman.sdd.delta
+ops[5]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r1,MCP 服务器,系统 MUST 在 feature mcp 下实现 MCP 服务器并暴露 Tier-0 调试工具。,null,null,null
+  add_requirement,r2,工具集合,"系统 MUST 注册 debug_launch、set_breakpoints、continue、step_over、step_into、step_out、pause、get_threads、get_stack、get_scopes、get_variables、evaluate、get_output、wait_stopped、disconnect、terminate、send_raw。",null,null,null
+  add_requirement,r3,会话池,系统 MUST 通过 DapPool 按 key 复用 DapSession。,null,null,null
+  add_requirement,r4,默认 TOON,"MCP 观测类工具输出 MUST 默认使用 TOON（或配置的紧凑格式）。",null,null,null
+  add_requirement,r5,禁专用 Tier-1 API,"系统 MUST NOT 注册 debug_attach、get_source、get_exception、set_exception_breakpoints 专用工具。",null,null,null
+op_scenarios[5]{req_id,id,given,when,then}:
+  r1,"mcp-start",启用 features mcp,运行 dapz mcp,进程以 MCP stdio 服务运行
+  r2,"list-tools",MCP list_tools,检查名称集合,恰好覆盖 Tier-0 17 tools（含 send_raw）
+  r3,"pool-reuse",相同 pool key 两次 debug_launch,获取会话,复用同一后端会话策略成立
+  r4,"stack-toon",get_stack 成功,返回内容,为 TOON 文本而非冗长 JSON
+  r5,"no-cut-tools",list_tools,扫描名称,不含已砍专用 API

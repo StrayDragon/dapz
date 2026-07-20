@@ -1,0 +1,11 @@
+kind: llman.sdd.delta
+ops[4]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r1,透明代理,系统 MUST 提供 Proxy 在 Agent 与 DAP adapter 之间透明转发请求与响应。,null,null,null
+  add_requirement,r2,拦截链,"Proxy MUST 对 Server→Client 消息应用 InterceptorChain（capping + compressors）；Client→Server MUST 原样转发。",null,null,null
+  add_requirement,r3,CLI 子命令,"CLI MUST 提供 dapz proxy（及别名 p）与 dapz mcp 子命令。",null,null,null
+  add_requirement,r4,配置驱动输出,"系统 MUST 支持 OutputFormat：json、toon、passthrough。",null,null,null
+op_scenarios[4]{req_id,id,given,when,then}:
+  r1,"proxy-start",配置 backend 命令,启动 Proxy,建立与 adapter 的会话
+  r2,"server-to-client-only",Client→Server 请求与 Server→Client 响应,经 Proxy,仅后者进入拦截链
+  r3,"help-subcommands",运行 dapz --help,查看子命令,列出 proxy 与 mcp
+  r4,"output-formats",Config.output_format 分别为 json/toon/passthrough,转发响应,按格式编码或不改写

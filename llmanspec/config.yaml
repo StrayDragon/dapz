@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/StrayDragon/llman/main/artifacts/schema/configs/en/llmanspec-config.schema.json
+schema: spec-driven
+locale: en
+
+# BDD: intentionally OFF for dapz.
+# Scenarios in llmanspec/specs/** use feature:false (documentation-only GWT).
+# Do not uncomment `bdd:` unless the project explicitly opts into BDD-on.
+
+# Optional extra skills (disabled by default, uncomment to enable).
+# On `llman sdd init --update` / `update-skills`, managed candidates are:
+#   default workflow skills + entries listed here (extra_skills extend).
+# Then `.agents/skills/llman-sdd-*` is scanned: anything not in that candidate
+# set is removed first, then candidates are written/updated. Only the
+# `llman-sdd-` prefix is touched (custom skills without that prefix are kept).
+# Deprecated shipped skills (e.g. removed from defaults) are cleaned this way.
+# extra_skills:
+#   - llman-sdd-new-change
+#   - llman-sdd-continue
+#   - llman-sdd-ff
+#   - llman-sdd-sync
+#   - llman-sdd-validate
+
+# BDD integration (optional, uncomment to enable)
+# bdd:
+#   framework: pytest-bdd
+#   feature_dir: tests/features/
+#   # default_language: en
+#   # Filtered runners: include {feature_*} so validate --all/--specs runs per capability.
+#   # run_command: "pytest {feature_dir} -k {feature_name} -v"
+#   # Project-wide runners (no placeholders): validate --all/--specs runs the suite once (batch-once).
+#   # run_command: "cargo test --features bdd"
+#   # verify_prompt: |
+#   #   Map test failures to requirement IDs.

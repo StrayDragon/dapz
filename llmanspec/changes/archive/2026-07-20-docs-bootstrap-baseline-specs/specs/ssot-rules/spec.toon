@@ -1,0 +1,9 @@
+kind: llman.sdd.delta
+ops[3]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r1,AGENTS SSOT,项目 MUST 以根 AGENTS.md 为通用规范 SSOT，并保留 LLMANSPEC managed block。,null,null,null
+  add_requirement,r2,计划优先级,"文档优先级 MUST 为 AGENTS.md → docs/specs → docs/plan；准发布临时计划为 _PLAN.md。",null,null,null
+  add_requirement,r3,路径发现 tip,"工具路径发现约定 MUST 记录于 docs/tips/00-tool-path-discovery.md 并与 adapters 实现对齐。",null,null,null
+op_scenarios[3]{req_id,id,given,when,then}:
+  r1,"managed-block",打开 AGENTS.md,查找 LLMANSPEC 标记,存在 START/END managed block
+  r2,"plan-refs",阅读 _PLAN.md 与 ROADMAP,交叉引用,版本目标与 CLI 形态一致
+  r3,"tip-aligned",对比 tip 搜索顺序与 resolve_tool,检查文档,顺序表一致

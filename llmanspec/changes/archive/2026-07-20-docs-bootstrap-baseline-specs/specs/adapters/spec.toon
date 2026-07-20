@@ -1,0 +1,11 @@
+kind: llman.sdd.delta
+ops[4]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r1,扩展名查找,系统 MUST 按文件扩展名解析 AdapterInfo（至少支持 py→debugpy）。,null,null,null
+  add_requirement,r2,resolve_tool,"resolve_tool MUST 按 PATH → ~/.local/bin → cargo bin → go bin → npm/bun 默认目录顺序查找可执行文件。",null,null,null
+  add_requirement,r3,debugpy 发现,"resolve_python_debug_adapter MUST 在 resolve_tool(debugpy-adapter) 之后尝试 uv tools 默认布局与 python -m debugpy.adapter。",null,null,null
+  add_requirement,r4,可测上下文,"DiscoveryContext MUST 支持注入 HOME/XDG/CARGO/GOPATH/PATH 以便单测不依赖进程全局环境。",null,null,null
+op_scenarios[4]{req_id,id,given,when,then}:
+  r1,"lookup-py",扩展名 py,lookup_by_extension,返回 language=python 且 backend 含 debugpy
+  r2,"user-bin-without-path","PATH 为空且 ~/.local/bin/mytool 可执行",resolve_tool_in,返回该路径
+  r3,"uv-tools-layout",仅存在 XDG uv/tools/debugpy/bin/debugpy-adapter,resolve_python_debug_adapter_in,返回该 adapter 路径
+  r4,"mock-home",临时目录作为 HOME,单元测试,不修改真实环境变量即可断言发现结果

@@ -1,0 +1,12 @@
+kind: llman.sdd.spec
+name: codec
+purpose: 编解码：JSON-RPC 与 TOON/passthrough 输出。
+valid_scope[2]: src/codec/,tests/
+requirements[3]{req_id,title,statement}:
+  r8,"JSON-RPC 编解码","系统 MUST 编解码 JSON-RPC 2.0 DAP 消息。"
+  r16,TOON 输出,系统 MUST 提供 value_to_toon：将任意 JSON Value 编码为 TOON 文本。
+  r24,Passthrough,output_format=passthrough 时 Proxy MUST NOT 改写消息体。
+scenarios[3]{req_id,id,given,when,then,feature}:
+  r8,roundtrip,合法 DAP JSON 对象,encode/decode,字段语义保持,false
+  r16,"toon-value",含嵌套对象的 Value,调用 value_to_toon,得到非空 TOON 字符串,false
+  r24,"passthrough-raw",passthrough 模式,转发任意 ServerToClient 帧,字节语义与输入一致,false
