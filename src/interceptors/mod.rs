@@ -13,6 +13,7 @@
 pub mod capping;
 pub mod evaluate;
 pub mod output;
+pub mod scopes;
 pub mod stacktrace;
 pub mod utils;
 pub mod variables;

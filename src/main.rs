@@ -1,19 +1,21 @@
-//! CLI entry point for dapz — DAP compression proxy.
+//! CLI entry point for dapz — DAP compression proxy and MCP server.
 //!
 //! ```bash
-//! dapz --backend <dap-server>       # Proxy mode (default)
+//! dapz proxy --backend "python3 -m debugpy.adapter"
+//! dapz mcp   # requires --features mcp
 //! ```
 
 use std::process::ExitCode;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use dapz::interceptors::Interceptor;
 use dapz::interceptors::InterceptorChain;
 use dapz::interceptors::capping::CappingInterceptor;
 use dapz::interceptors::evaluate::EvaluateCompressor;
 use dapz::interceptors::output::OutputCompressor;
+use dapz::interceptors::scopes::ScopesCompressor;
 use dapz::interceptors::stacktrace::StackTraceCompressor;
 use dapz::interceptors::variables::VariablesCompressor;
 use dapz::{CappingConfig, Config, OutputFormat, Proxy, StdioTransport, Transport};
@@ -21,9 +23,26 @@ use tokio::sync::RwLock;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Debug)]
-#[command(version, about)]
+#[command(version, about = "AI-friendly DAP compression proxy")]
 struct Cli {
-    /// Backend DAP server command (e.g. "debug-adapter", "lldb-vscode")
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Run as a transparent DAP compression proxy (default mode).
+    #[command(name = "proxy", alias = "p")]
+    Proxy(ProxyArgs),
+    /// Run as an MCP server exposing debug tools (requires `--features mcp`).
+    #[command(name = "mcp")]
+    Mcp(McpArgs),
+}
+
+/// Arguments for `dapz proxy`.
+#[derive(Parser, Debug)]
+struct ProxyArgs {
+    /// Backend DAP server command (e.g. "python3 -m debugpy.adapter")
     #[arg(short, long, env = "DAPZ_BACKEND_CMD")]
     backend: String,
 
@@ -79,6 +98,14 @@ struct Cli {
     )]
     compress_evaluate: bool,
 
+    /// Enable scopes response compression (default: true)
+    #[arg(
+        long = "compress-scopes",
+        env = "DAPZ_ENABLE_SCOPES_COMPRESS",
+        default_value_t = true
+    )]
+    compress_scopes: bool,
+
     /// Maximum evaluate result string length in chars (0 = unlimited)
     #[arg(long, env = "DAPZ_MAX_EVALUATE_LENGTH", default_value_t = 500)]
     max_evaluate_length: usize,
@@ -87,15 +114,30 @@ struct Cli {
     #[arg(long, env = "DAPZ_MAX_VALUE_LENGTH", default_value_t = 120)]
     max_value_length: usize,
 
-    /// Output format: json or passthrough
+    /// Output format: json, toon, or passthrough
     #[arg(short, long, env = "DAPZ_OUTPUT_FORMAT", default_value = "json")]
     output: String,
 }
 
+/// Arguments for `dapz mcp`.
+#[derive(Parser, Debug)]
+struct McpArgs {
+    /// Log level
+    #[arg(short, long, env = "DAPZ_LOG_LEVEL", default_value = "info")]
+    log_level: String,
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
-    let args = Cli::parse();
+    let cli = Cli::parse();
 
+    match cli.command {
+        Commands::Proxy(args) => run_proxy(args).await,
+        Commands::Mcp(args) => run_mcp(args).await,
+    }
+}
+
+async fn run_proxy(args: ProxyArgs) -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::builder().parse_lossy(&args.log_level))
         .with_target(false)
@@ -138,7 +180,56 @@ async fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn build_config(args: &Cli, output_format: OutputFormat) -> Result<Config, ExitCode> {
+async fn run_mcp(args: McpArgs) -> ExitCode {
+    #[cfg(feature = "mcp")]
+    {
+        // Keep tracing off stdio so MCP JSON-RPC is not polluted.
+        let log_path = std::env::temp_dir().join("dapz-mcp.log");
+        let log_file = match std::fs::File::create(&log_path) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("dapz: cannot create {}: {e}", log_path.display());
+                return ExitCode::FAILURE;
+            }
+        };
+        tracing_subscriber::fmt()
+            .with_env_filter(EnvFilter::builder().parse_lossy(&args.log_level))
+            .with_writer(log_file)
+            .with_target(false)
+            .init();
+
+        use dapz::mcp::McpServer;
+        use rmcp::ServiceExt;
+        use rmcp::transport::stdio;
+
+        let server = McpServer::new();
+        match server.serve(stdio()).await {
+            Ok(running) => {
+                if let Err(e) = running.waiting().await {
+                    tracing::error!(error = %e, "MCP server stopped with error");
+                    return ExitCode::FAILURE;
+                }
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("Failed to start MCP server: {e}");
+                ExitCode::FAILURE
+            }
+        }
+    }
+
+    #[cfg(not(feature = "mcp"))]
+    {
+        let _ = args;
+        eprintln!(
+            "MCP support is not enabled.\n\
+             Rebuild with `cargo build --features mcp` to enable MCP support."
+        );
+        ExitCode::FAILURE
+    }
+}
+
+fn build_config(args: &ProxyArgs, output_format: OutputFormat) -> Result<Config, ExitCode> {
     Config::builder()
         .backend_cmd(&args.backend)
         .capping(CappingConfig {
@@ -152,6 +243,7 @@ fn build_config(args: &Cli, output_format: OutputFormat) -> Result<Config, ExitC
         .enable_variables_compress(args.compress_variables)
         .enable_stacktrace_compress(args.compress_stacktrace)
         .enable_evaluate_compress(args.compress_evaluate)
+        .enable_scopes_compress(args.compress_scopes)
         .output_format(output_format)
         .log_level(&args.log_level)
         .build()
@@ -173,9 +265,12 @@ fn build_interceptor_chain(shared_config: &Arc<RwLock<Config>>) -> InterceptorCh
         Box::new(EvaluateCompressor::new(config.capping.max_evaluate_length)),
         Box::new(VariablesCompressor::new(config.capping.max_value_length)),
         Box::new(StackTraceCompressor),
+        Box::new(ScopesCompressor),
     ];
 
-    tracing::info!("Interceptor chain built: capping, output, evaluate, variables, stacktrace");
+    tracing::info!(
+        "Interceptor chain built: capping, output, evaluate, variables, stacktrace, scopes"
+    );
 
     InterceptorChain::new(interceptors, shared_config.clone())
 }

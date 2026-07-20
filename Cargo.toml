@@ -1,6 +1,6 @@
 [package]
 name = "dapz"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/StrayDragon/dapz"
@@ -18,14 +18,14 @@ transport-tcp = []
 transport-websocket = ["dep:tokio-tungstenite", "dep:futures-util"]
 
 [dependencies]
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.35", features = ["full", "test-util"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 async-trait = "0.1"
-thiserror = "1.0"
+thiserror = "2"
 tracing = "0.1"
-toml = "0.8"
-notify = "7"
+toml = "1"
+notify = "8"
 shell-words = "1.1"
 
 # CLI (optional)
@@ -33,11 +33,11 @@ clap = { version = "4", optional = true, features = ["derive", "env"] }
 tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter"] }
 
 # MCP / Agent SDK (optional)
-rmcp = { version = "0.16", optional = true, features = ["server", "transport-io"] }
+rmcp = { version = "2", optional = true, features = ["server", "transport-io"] }
 anyhow = { version = "1.0", optional = true }
 
 # WebSocket transport (optional)
-tokio-tungstenite = { version = "0.21", optional = true, default-features = false, features = ["connect"] }
+tokio-tungstenite = { version = "0.26", optional = true, default-features = false, features = ["connect"] }
 futures-util = { version = "0.3", optional = true, default-features = false, features = ["sink", "std"] }
 
 [[bin]]
@@ -46,11 +46,19 @@ path = "src/main.rs"
 required-features = ["cli"]
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 tiktoken-rs = "0.11"
 tempfile = "3"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [[bench]]
 name = "compression"
 harness = false
 path = "benches/compression.rs"
+
+[[test]]
+name = "agent_debug_loop"
+required-features = ["agent-sdk"]

@@ -8,9 +8,10 @@
 //! |-----------|----------|-------------|--------|
 //! | `StdioTransport` | Child process stdio | always | ✅ |
 //! | `TcpTransport` | TCP socket | always | ✅ |
-//! | `WsTransport` | WebSocket | `transport-websocket` | planned |
+//! | `WsTransport` | WebSocket | `transport-websocket` | ✅ |
 //! | `MockTransport` | In-memory FIFO | always (testing) | ✅ |
 
+pub(crate) mod framing;
 pub mod mock;
 pub mod stdio;
 pub mod tcp;

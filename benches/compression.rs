@@ -5,7 +5,9 @@
 //!
 //! Run: cargo bench
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use std::hint::black_box;
+
+use criterion::{Criterion, criterion_group, criterion_main};
 
 use dapz::codec::json_rpc::DapMessage;
 use dapz::interceptors::Interceptor;

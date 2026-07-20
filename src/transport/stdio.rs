@@ -1,24 +1,22 @@
 //! Stdio transport — child process stdio.
 //!
 //! Spawns a DAP server as a child process and communicates via stdin/stdout.
-//!
-//! This is the primary transport for DAP proxies, matching the typical
-//! DAP server deployment pattern.
 
 use std::process::ExitStatus;
 
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout};
 
-use crate::codec::json_rpc;
 use crate::error::DapzError;
 use crate::transport::Transport;
+use crate::transport::framing::{self, FrameState};
 
 /// Stdio-based transport for child process DAP servers.
 pub struct StdioTransport {
     child: Option<Child>,
     reader: BufReader<ChildStdout>,
     writer: ChildStdin,
+    frame_state: FrameState,
 }
 
 impl StdioTransport {
@@ -57,6 +55,7 @@ impl StdioTransport {
             child: Some(child),
             reader: BufReader::new(stdout),
             writer: stdin,
+            frame_state: FrameState::new(),
         })
     }
 }
@@ -64,41 +63,7 @@ impl StdioTransport {
 #[async_trait::async_trait]
 impl Transport for StdioTransport {
     async fn receive(&mut self) -> Result<Vec<u8>, DapzError> {
-        let mut header = String::new();
-        loop {
-            let mut line = String::new();
-            let n = self.reader.read_line(&mut line).await.map_err(|e| {
-                if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                    DapzError::ServerExited
-                } else {
-                    DapzError::Io(e)
-                }
-            })?;
-
-            if n == 0 {
-                return Err(DapzError::ServerExited);
-            }
-
-            header.push_str(&line);
-
-            if line == "\r\n" || line == "\n" {
-                break;
-            }
-        }
-
-        let content_length = json_rpc::parse_content_length(&header)?;
-        let mut body = vec![0u8; content_length as usize];
-        self.reader.read_exact(&mut body).await.map_err(|e| {
-            if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                DapzError::ServerExited
-            } else {
-                DapzError::Io(e)
-            }
-        })?;
-
-        let mut result = header.into_bytes();
-        result.extend_from_slice(&body);
-        Ok(result)
+        framing::read_frame_with_state(&mut self.reader, &mut self.frame_state).await
     }
 
     async fn send(&mut self, data: &[u8]) -> Result<(), DapzError> {

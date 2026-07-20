@@ -20,6 +20,15 @@ use dapz::proxy::Direction;
 
 mod common;
 
+fn debugpy_adapter_bin() -> String {
+    std::env::var("DAPZ_DEBUGPY_BACKEND")
+        .ok()
+        .filter(|s| !s.is_empty() && !s.contains(' '))
+        .or_else(dapz::resolve_python_debug_adapter)
+        .filter(|s| !s.contains(' '))
+        .unwrap_or_else(|| "debugpy-adapter".into())
+}
+
 /// Create a test Python script with functions, variables, and arrays.
 fn create_test_script() -> (std::path::PathBuf, tempfile::TempDir) {
     common::create_test_script(
@@ -56,6 +65,7 @@ fn build_test_chain() -> dapz::interceptors::InterceptorChain {
         enable_variables_compress: true,
         enable_stacktrace_compress: true,
         enable_evaluate_compress: true,
+        enable_scopes_compress: true,
         output_format: dapz::OutputFormat::Json,
         log_level: "info".into(),
     }));
@@ -98,8 +108,9 @@ where
 async fn test_debugpy_handshake_succeeds() {
     let capabilities = run_dap_session(move || {
         let (script_path, _dir) = create_test_script();
-        let mut session =
-            common::DapSession::spawn("debugpy-adapter", &[]).expect("spawn debugpy-adapter");
+        let adapter = debugpy_adapter_bin();
+        let mut session = common::DapSession::spawn(&adapter, &[])
+            .unwrap_or_else(|e| panic!("spawn {adapter}: {e}"));
         let caps = common::perform_handshake(&mut session, script_path.to_str().unwrap());
         session.kill().ok();
         caps
@@ -117,8 +128,9 @@ async fn test_debugpy_handshake_succeeds() {
 async fn test_debugpy_stacktrace_compression() {
     let (stacktrace_resp, frame_id) = run_dap_session(move || {
         let (script_path, _dir) = create_test_script();
+        let adapter = debugpy_adapter_bin();
         let mut session =
-            common::DapSession::spawn("debugpy-adapter", &[]).expect("spawn debugpy-adapter");
+            common::DapSession::spawn(&adapter, &[]).unwrap_or_else(|e| panic!("spawn {adapter}: {e}"));
         let _caps = common::perform_handshake(&mut session, script_path.to_str().unwrap());
 
         // Send stackTrace request
@@ -175,8 +187,9 @@ async fn test_debugpy_stacktrace_compression() {
 async fn test_debugpy_variables_and_evaluate_compression() {
     let (stacktrace_resp, variables_resp, evaluate_resp) = run_dap_session(move || {
         let (script_path, _dir) = create_test_script();
+        let adapter = debugpy_adapter_bin();
         let mut session =
-            common::DapSession::spawn("debugpy-adapter", &[]).expect("spawn debugpy-adapter");
+            common::DapSession::spawn(&adapter, &[]).unwrap_or_else(|e| panic!("spawn {adapter}: {e}"));
         let _caps = common::perform_handshake(&mut session, script_path.to_str().unwrap());
 
         // stackTrace
