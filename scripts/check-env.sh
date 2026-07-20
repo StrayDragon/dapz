@@ -2,14 +2,14 @@
 # Check local environment for dapz harness (required vs optional).
 #
 # Discovers debugpy via PATH + common package-manager locations (uv tool,
-# ~/.local/bin) so Cursor/agent shells without ~/.local/bin still pass.
+# ~/.local/bin, cargo/go bins) so Cursor/agent shells without those dirs still pass.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-# Common user-bin paths (uv tool / pipx) — prepend if missing.
-export PATH="${HOME}/.local/bin:${PATH:-}"
+# Common user-bin paths (uv tool / pipx / cargo) — prepend if missing.
+export PATH="${HOME}/.local/bin:${CARGO_HOME:-$HOME/.cargo}/bin:${PATH:-}"
 
 fail=0
 warn=0
@@ -38,7 +38,7 @@ else
   bad "python3 missing"
 fi
 
-# Resolve debugpy adapter (same search idea as src/adapters.rs).
+# Resolve debugpy adapter (same search order as src/adapters.rs).
 resolve_debugpy() {
   if command -v debugpy-adapter >/dev/null 2>&1; then
     command -v debugpy-adapter
@@ -46,6 +46,7 @@ resolve_debugpy() {
   fi
   local candidates=(
     "${HOME}/.local/bin/debugpy-adapter"
+    "${CARGO_HOME:-$HOME/.cargo}/bin/debugpy-adapter"
     "${XDG_DATA_HOME:-$HOME/.local/share}/uv/tools/debugpy/bin/debugpy-adapter"
   )
   local c
@@ -69,10 +70,44 @@ resolve_debugpy() {
 
 if DAPZ_DEBUGPY_BACKEND="$(resolve_debugpy)"; then
   ok "debugpy adapter: $DAPZ_DEBUGPY_BACKEND"
-  # Exported for harness / e2e consumers
   export DAPZ_DEBUGPY_BACKEND
 else
   bad "debugpy adapter not found — try: uv tool install debugpy   (or pip install debugpy)"
+fi
+
+# Acceptance: default layouts still resolve with a stripped PATH (tip §验收).
+if [[ -n "${DAPZ_DEBUGPY_BACKEND:-}" ]]; then
+  CLEAN_BACKEND="$(
+    env -i \
+      HOME="$HOME" \
+      XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}" \
+      CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}" \
+      PATH="/usr/bin:/bin" \
+      bash -c '
+        resolve_debugpy() {
+          local candidates=(
+            "${HOME}/.local/bin/debugpy-adapter"
+            "${CARGO_HOME}/bin/debugpy-adapter"
+            "${XDG_DATA_HOME}/uv/tools/debugpy/bin/debugpy-adapter"
+          )
+          local c
+          for c in "${candidates[@]}"; do
+            if [[ -x "$c" ]]; then echo "$c"; return 0; fi
+          done
+          local uv_py="${XDG_DATA_HOME}/uv/tools/debugpy/bin/python3"
+          if [[ -x "$uv_py" ]] && "$uv_py" -c "import debugpy" 2>/dev/null; then
+            echo "$uv_py -m debugpy.adapter"; return 0
+          fi
+          return 1
+        }
+        resolve_debugpy
+      '
+  )" || CLEAN_BACKEND=""
+  if [[ -n "$CLEAN_BACKEND" ]]; then
+    ok "clean-PATH discovery: $CLEAN_BACKEND"
+  else
+    wrn "clean-PATH discovery missed (adapter only on extended PATH?)"
+  fi
 fi
 
 if cargo build --features mcp,agent-sdk -q; then
@@ -81,7 +116,8 @@ else
   bad "cargo build --features mcp,agent-sdk failed"
 fi
 
-if command -v lldb-vscode >/dev/null || command -v lldb-dap >/dev/null; then
+if command -v lldb-vscode >/dev/null || command -v lldb-dap >/dev/null \
+  || [[ -x "${CARGO_HOME:-$HOME/.cargo}/bin/lldb-dap" ]]; then
   ok "lldb adapter present (optional)"
 else
   wrn "lldb-vscode/lldb-dap not found (optional)"
@@ -93,6 +129,5 @@ if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi
 echo "check-env: OK (${warn} warnings)"
-# Persist for parent harness when sourced? harness calls as subprocess — print for copy.
 echo "DAPZ_DEBUGPY_BACKEND=${DAPZ_DEBUGPY_BACKEND:-}"
 exit 0

@@ -29,7 +29,7 @@
 | 模式 | 目标用户 | 典型场景 | 集成方式 |
 |------|----------|----------|----------|
 | **Library** | 自研 Agent CLI | 完全控制，零开销 | `dapz::Proxy` / crate 的直接引用 |
-| **Proxy** | Claude Code/Continue/Cody | 即插即用，透明代理 | `dapz --backend lldb-vscode` |
+| **Proxy** | Claude Code/Continue/Cody | 即插即用，透明代理 | `dapz proxy --backend "python3 -m debugpy.adapter"` |
 | **MCP** | 快速实验/多工具协同 | 融入生态，按需查询 | MCP server 配置 |
 
 ---
@@ -59,15 +59,27 @@
 |------|--------|
 | **v0.0.1** | crate name locking |
 | **v0.1.0** *(当前)* | MVP: Proxy + TOON + MCP + Agent SDK + harness |
+| **v0.2.0** *(规划)* | SDD 基线 specs → AgentPool / verify 门禁 / metrics；Tier-1 按需（见 `_PLAN.md` §9） |
 
 ## 快速验证
 
 ```bash
-just fmt        # 格式化
-just lint       # clippy 检查
-just test       # 运行测试
-just qa         # 全部检查
+just fmt           # 格式化
+just lint          # clippy 检查
+just test          # 运行测试
+just qa            # 全部检查
+just harness-env   # debugpy / 路径发现
+just harness       # 本地准发布门禁（含 e2e）
 ```
+
+### CLI 形态（与 lspz 对齐）
+
+```bash
+dapz proxy --backend "…"   # 透明 DAP 压缩代理
+dapz mcp                   # MCP server（需 --features mcp）
+```
+
+增量变更走 **llman SDD**（`llmanspec/` + `/llman-sdd-*` skills）。
 
 ## 技术栈
 

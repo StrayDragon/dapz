@@ -5,8 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-# Ensure uv/pipx user bins are visible in agent/CI shells.
-export PATH="${HOME}/.local/bin:${PATH:-}"
+# Ensure uv/pipx/cargo user bins are visible in agent/CI shells.
+export PATH="${HOME}/.local/bin:${CARGO_HOME:-$HOME/.cargo}/bin:${PATH:-}"
 
 REQUIRE_E2E="${DAPZ_REQUIRE_E2E:-1}"
 SKIP_E2E=0
