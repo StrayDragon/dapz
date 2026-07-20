@@ -17,7 +17,7 @@
 | Tier-0 收紧（2026-07-20） | 首版砍 attach/source/exception；**P4 已升一等公民**（仍保留 `send_raw`） |
 | 参考后端 | **debugpy** 唯一必测 |
 | 默认输出 | MCP/SDK：**TOON**；Proxy：`json` / `toon` / `passthrough` |
-| 版本目标 | **v0.1.0** ✅ 已发布 |
+| 版本目标 | **v0.2.0** ✅（daemon → v0.3） |
 | 后续工程 | **v0.2+** 经 llman SDD 逐项跟进 lspz 成熟度（见 §9） |
 
 ---
@@ -274,4 +274,14 @@ main()
 | P4 | `add-tier1-exception-apis` | MCP exception* | ✅ 已 archive：attach/source/exception + ExceptionInfoCompressor（DAP≠LSP diag） |
 | P5 | `add-daemon` | `daemon/*` | 长驻 session（明确延后，需单独决策） |
 
-**不做（除非新决策）**：workspace roots / uri / init / config_watcher（DAP 场景收益低于 LSP）。
+**不做（除非新决策）**：workspace roots / uri / init / config_watcher（LSP 工作区模型；DAP 收益低）。
+
+### 与 lspz 架构对照（成熟度）
+
+| 面 | lspz | dapz（本轮后） | 差异要点 |
+|----|------|----------------|----------|
+| Pool | language + workspace | **session key** / backend+cwd | 无文档同步 |
+| MCP | diagnostics/completions | launch/attach/stack/vars/**exception** | 协议不同 |
+| Metrics | Metred* on LSP params | Metered on **DAP frames** | 计量对象不同 |
+| Verify | verify-all | `just verify` + **`just harness`(debugpy)** | e2e 后端不同 |
+| Daemon | 有 | **未做**（P5） | 有意延后 |

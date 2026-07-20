@@ -58,8 +58,9 @@
 | 版本 | 里程碑 |
 |------|--------|
 | **v0.0.1** | crate name locking |
-| **v0.1.0** *(当前)* | MVP: Proxy + TOON + MCP + Agent SDK + harness |
-| **v0.2.0** *(规划)* | SDD 基线 specs → AgentPool / verify 门禁 / metrics；Tier-1 按需（见 `_PLAN.md` §9） |
+| **v0.1.0** | MVP: Proxy + TOON + MCP + Agent SDK + harness |
+| **v0.2.0** *(当前)* | SDD + AgentPool + verify + metrics + Tier-1 exception APIs |
+| **v0.3.0** *(规划)* | daemon（长驻 DAP session；见 `_PLAN.md` §9 P5） |
 
 ## 快速验证
 
