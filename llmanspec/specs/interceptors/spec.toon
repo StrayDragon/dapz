@@ -1,6 +1,6 @@
 kind: llman.sdd.spec
 name: interceptors
-purpose: 拦截器：capping 与 DAP 压缩器（output/stack/vars/evaluate/scopes）。
+purpose: 拦截器：capping 与 DAP 压缩器（output/stack/vars/evaluate/scopes/exceptionInfo）。
 valid_scope[2]: src/interceptors/,tests/
 requirements[7]{req_id,title,statement}:
   r9,Capping,系统 MUST 提供 CappingInterceptor 限制 output/stackTrace/variables 条目规模。
