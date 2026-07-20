@@ -58,6 +58,9 @@ impl AgentHandle {
             "scopes" => Some(Box::new(ScopesCompressor)),
             "variables" => Some(Box::new(VariablesCompressor::new(120))),
             "evaluate" => Some(Box::new(EvaluateCompressor::new(500))),
+            "exceptionInfo" => Some(Box::new(
+                crate::interceptors::exception::ExceptionInfoCompressor::default(),
+            )),
             _ => None,
         };
         if let Some(interceptor) = interceptor {
@@ -210,6 +213,38 @@ impl AgentHandle {
 
     pub async fn send_raw(&mut self, command: &str, arguments: Value) -> Result<String, DapzError> {
         let body = self.session.send_raw(command, arguments).await?;
+        self.to_out(&body)
+    }
+
+    /// Attach to a running debuggee (adapter-specific attach args).
+    pub async fn attach(&mut self, arguments: Value) -> Result<String, DapzError> {
+        let body = self.session.attach(arguments).await?;
+        self.to_out(&body)
+    }
+
+    /// Fetch source by DAP `sourceReference`.
+    pub async fn get_source(
+        &mut self,
+        source_reference: i64,
+        path: Option<&str>,
+    ) -> Result<String, DapzError> {
+        let body = self.session.get_source(source_reference, path).await?;
+        self.to_out(&body)
+    }
+
+    /// Get exception details for a thread.
+    pub async fn get_exception(&mut self, thread_id: Option<i64>) -> Result<String, DapzError> {
+        let body = self.session.get_exception_info(thread_id).await?;
+        let body = self.compress_response("exceptionInfo", body).await;
+        self.to_out(&body)
+    }
+
+    /// Configure exception breakpoints (adapter filter ids).
+    pub async fn set_exception_breakpoints(
+        &mut self,
+        filters: &[String],
+    ) -> Result<String, DapzError> {
+        let body = self.session.set_exception_breakpoints(filters).await?;
         self.to_out(&body)
     }
 }

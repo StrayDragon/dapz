@@ -41,9 +41,19 @@ fn tool_definitions() -> Vec<Tool> {
             rmcp::model::object(DebugLaunchInput::json_schema()),
         ),
         Tool::new(
+            "debug_attach",
+            "Attach to a running debuggee (DAP attach). Arguments are adapter-specific JSON. Returns TOON.",
+            rmcp::model::object(DebugAttachInput::json_schema()),
+        ),
+        Tool::new(
             "set_breakpoints",
             "Set breakpoints on a source file in the active session.",
             rmcp::model::object(SetBreakpointsInput::json_schema()),
+        ),
+        Tool::new(
+            "set_exception_breakpoints",
+            "Set exception breakpoints via DAP filters (e.g. debugpy raised/uncaught).",
+            rmcp::model::object(SetExceptionBreakpointsInput::json_schema()),
         ),
         Tool::new(
             "continue",
@@ -94,6 +104,16 @@ fn tool_definitions() -> Vec<Tool> {
             "evaluate",
             "Evaluate an expression in a frame (compressed TOON).",
             rmcp::model::object(EvaluateInput::json_schema()),
+        ),
+        Tool::new(
+            "get_exception",
+            "Get exceptionInfo for a thread (compressed TOON). DAP-specific — not LSP diagnostics.",
+            rmcp::model::object(ThreadInput::json_schema()),
+        ),
+        Tool::new(
+            "get_source",
+            "Fetch source content via DAP sourceReference.",
+            rmcp::model::object(GetSourceInput::json_schema()),
         ),
         Tool::new(
             "get_output",
@@ -150,6 +170,31 @@ struct DebugLaunchInput {
 struct BreakpointSpec {
     path: String,
     lines: Vec<i64>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct DebugAttachInput {
+    /// Adapter-specific attach arguments (passed as DAP attach body).
+    arguments: Value,
+    backend: Option<String>,
+    language: Option<String>,
+    cwd: Option<String>,
+    backend_args: Option<Vec<String>>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SetExceptionBreakpointsInput {
+    backend: Option<String>,
+    cwd: Option<String>,
+    filters: Vec<String>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct GetSourceInput {
+    backend: Option<String>,
+    cwd: Option<String>,
+    source_reference: i64,
+    path: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -250,6 +295,51 @@ impl JsonSchema for DebugLaunchInput {
                 "backend_args": { "type": "array", "items": { "type": "string" } }
             },
             "required": ["program"]
+        })
+    }
+}
+
+impl JsonSchema for DebugAttachInput {
+    fn json_schema() -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "arguments": { "type": "object", "description": "DAP attach arguments (adapter-specific)" },
+                "backend": { "type": "string" },
+                "language": { "type": "string" },
+                "cwd": { "type": "string" },
+                "backend_args": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["arguments"]
+        })
+    }
+}
+
+impl JsonSchema for SetExceptionBreakpointsInput {
+    fn json_schema() -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "backend": { "type": "string" },
+                "cwd": { "type": "string" },
+                "filters": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["filters"]
+        })
+    }
+}
+
+impl JsonSchema for GetSourceInput {
+    fn json_schema() -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "backend": { "type": "string" },
+                "cwd": { "type": "string" },
+                "source_reference": { "type": "integer" },
+                "path": { "type": "string" }
+            },
+            "required": ["source_reference"]
         })
     }
 }
@@ -411,6 +501,9 @@ async fn compress_response(command: &str, body: Value) -> Value {
         "scopes" => Some(Box::new(ScopesCompressor)),
         "variables" => Some(Box::new(VariablesCompressor::new(120))),
         "evaluate" => Some(Box::new(EvaluateCompressor::new(500))),
+        "exceptionInfo" => Some(Box::new(
+            crate::interceptors::exception::ExceptionInfoCompressor::default(),
+        )),
         _ => None,
     };
     if let Some(interceptor) = interceptor {
@@ -582,7 +675,12 @@ impl ServerHandler for McpServer {
 
         let text = match name.as_ref() {
             "debug_launch" => self.handle_debug_launch(parse_args(args)?).await?,
+            "debug_attach" => self.handle_debug_attach(parse_args(args)?).await?,
             "set_breakpoints" => self.handle_set_breakpoints(parse_args(args)?).await?,
+            "set_exception_breakpoints" => {
+                self.handle_set_exception_breakpoints(parse_args(args)?)
+                    .await?
+            }
             "continue" => self.handle_continue(parse_args(args)?).await?,
             "step_over" => self.handle_step_over(parse_args(args)?).await?,
             "step_into" => self.handle_step_into(parse_args(args)?).await?,
@@ -593,6 +691,8 @@ impl ServerHandler for McpServer {
             "get_scopes" => self.handle_get_scopes(parse_args(args)?).await?,
             "get_variables" => self.handle_get_variables(parse_args(args)?).await?,
             "evaluate" => self.handle_evaluate(parse_args(args)?).await?,
+            "get_exception" => self.handle_get_exception(parse_args(args)?).await?,
+            "get_source" => self.handle_get_source(parse_args(args)?).await?,
             "get_output" => self.handle_get_output(parse_args(args)?).await?,
             "wait_stopped" => self.handle_wait_stopped(parse_args(args)?).await?,
             "disconnect" => self.handle_disconnect(parse_args(args)?).await?,
@@ -652,6 +752,33 @@ impl McpServer {
             "backend": backend,
             "cwd": cwd,
             "stopped": stopped,
+        }))
+    }
+
+    async fn handle_debug_attach(&self, input: DebugAttachInput) -> Result<String, ErrorData> {
+        let backend = resolve_backend(None, input.language.as_deref(), input.backend.as_deref())?;
+        let cwd = input.cwd.as_deref();
+        let extra = input.backend_args.unwrap_or_default();
+        let session = {
+            let mut pool = self.pool.lock().await;
+            let key = pool_key(&backend, cwd);
+            pool.remove(&key);
+            pool.get_or_spawn(&backend, cwd, &extra)
+                .await
+                .map_err(|e| ErrorData::internal_error(e.to_string(), None))?
+        };
+        let mut guard = session.lock().await;
+        let body = guard
+            .attach(input.arguments)
+            .await
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        drop(guard);
+        self.remember(&backend, cwd).await;
+        to_toon(&json!({
+            "ok": true,
+            "backend": backend,
+            "cwd": cwd,
+            "attach": body,
         }))
     }
 
@@ -805,6 +932,49 @@ impl McpServer {
         to_toon(&compressed)
     }
 
+    async fn handle_get_exception(&self, input: ThreadInput) -> Result<String, ErrorData> {
+        let (backend, cwd) = self
+            .resolve_session_key(input.backend.as_deref(), input.cwd.as_deref())
+            .await?;
+        let session = self.get_session(&backend, cwd.as_deref()).await?;
+        let mut s = session.lock().await;
+        let body = s
+            .get_exception_info(input.thread_id)
+            .await
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        let compressed = compress_response("exceptionInfo", body).await;
+        to_toon(&compressed)
+    }
+
+    async fn handle_get_source(&self, input: GetSourceInput) -> Result<String, ErrorData> {
+        let (backend, cwd) = self
+            .resolve_session_key(input.backend.as_deref(), input.cwd.as_deref())
+            .await?;
+        let session = self.get_session(&backend, cwd.as_deref()).await?;
+        let mut s = session.lock().await;
+        let body = s
+            .get_source(input.source_reference, input.path.as_deref())
+            .await
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        to_toon(&body)
+    }
+
+    async fn handle_set_exception_breakpoints(
+        &self,
+        input: SetExceptionBreakpointsInput,
+    ) -> Result<String, ErrorData> {
+        let (backend, cwd) = self
+            .resolve_session_key(input.backend.as_deref(), input.cwd.as_deref())
+            .await?;
+        let session = self.get_session(&backend, cwd.as_deref()).await?;
+        let mut s = session.lock().await;
+        let body = s
+            .set_exception_breakpoints(&input.filters)
+            .await
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        to_toon(&body)
+    }
+
     async fn handle_get_output(&self, input: SessionRefInput) -> Result<String, ErrorData> {
         let (backend, cwd) = self
             .resolve_session_key(input.backend.as_deref(), input.cwd.as_deref())
@@ -881,15 +1051,16 @@ mod tests {
 
     #[test]
     fn test_tool_definitions_count() {
-        assert_eq!(tool_count(), 17);
+        assert_eq!(tool_count(), 21);
         let tools = tool_definitions();
-        assert_eq!(tools.len(), 17);
+        assert_eq!(tools.len(), 21);
         let names: Vec<_> = tools.iter().map(|t| t.name.as_ref()).collect();
         assert!(names.contains(&"debug_launch"));
+        assert!(names.contains(&"debug_attach"));
         assert!(names.contains(&"get_stack"));
+        assert!(names.contains(&"get_exception"));
+        assert!(names.contains(&"get_source"));
+        assert!(names.contains(&"set_exception_breakpoints"));
         assert!(names.contains(&"send_raw"));
-        assert!(!names.iter().any(|n| n.contains("attach")));
-        assert!(!names.iter().any(|n| n.contains("exception")));
-        assert!(!names.iter().any(|n| *n == "get_source"));
     }
 }

@@ -3,6 +3,8 @@
 ## Unreleased
 
 - **Tooling**: `just qa` includes `doc-check`; `just verify` / `scripts/verify-all.sh` (SDD + prek)
+- **Metrics**: `MeteredInterceptor` + `DAPZ_METRICS` env (DAP message byte/latency snapshots)
+- **Tier-1 DAP**: `debug_attach` / `get_source` / `get_exception` / `set_exception_breakpoints` + `ExceptionInfoCompressor` (21 MCP tools)
 - **Agent SDK**: `AgentPool` / `AgentPoolBuilder` — multi-session DAP handles keyed by session name (not LSP language)
 - **Discovery**: generalized `resolve_tool` / `DiscoveryContext` (PATH → `~/.local/bin` → cargo/go/npm/bun defaults); mock-HOME unit tests; `check-env` clean-PATH probe
 - **Docs**: `_PLAN.md` §9 v0.2 SDD backlog; ROADMAP CLI/`just harness`; tip + README install notes

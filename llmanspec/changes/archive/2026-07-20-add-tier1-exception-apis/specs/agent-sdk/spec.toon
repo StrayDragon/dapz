@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r31,Tier-1 异常方法,"AgentHandle MUST 提供 attach、get_source、get_exception、set_exception_breakpoints（可用 send_raw 作为补充）。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r31,"has-attach-api",查阅 AgentHandle API,检查公开方法,存在 attach 与 get_exception

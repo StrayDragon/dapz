@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r34,"Tier-0 加 Tier-1 异常","系统 MUST 以 launch 闭环为默认路径，并 MUST 提供 attach/source/exceptionInfo/setExceptionBreakpoints 专用 MCP/SDK API（仍可用 send_raw）。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r34,"exception-tools-present",list_tools,检查工具名,包含 get_exception 与 set_exception_breakpoints

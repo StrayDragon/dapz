@@ -72,15 +72,15 @@ launch → setBreakpoints → configurationDone
 | `terminated` / `exited` | 否 | 终止信息 |
 | `thread` / `breakpoint` | 否 | 透传缓冲可选 |
 
-### 1.2 明确降级到 Tier-1（透传 / `send_raw` only）
+### 1.2 Tier-1 专用 API（已实现）+ 其余透传
 
-| DAP | 原因 |
+| DAP | 状态 |
 |-----|------|
-| `attach` | 首版只保证 launch 闭环 |
-| `source` | 源码可读磁盘；非观测最小集 |
-| `exceptionInfo` | 可用 stack+variables+output 覆盖多数 bug；后续加 |
-| `setExceptionBreakpoints` | 随 exceptionInfo 延后 |
-| Spec 其余全部 | 见原 DAP 全表 — Proxy 透传 |
+| `attach` | MCP `debug_attach` / SDK `attach` |
+| `source` | MCP `get_source` / SDK `get_source` |
+| `exceptionInfo` | MCP `get_exception` / SDK `get_exception` + 压缩 |
+| `setExceptionBreakpoints` | MCP/SDK `set_exception_breakpoints` |
+| Spec 其余 | Proxy 透传 / `send_raw` |
 
 ### 1.3 压缩白名单
 
@@ -92,7 +92,7 @@ launch → setBreakpoints → configurationDone
 | `VariablesCompressor` | `variables` | 已有 |
 | `EvaluateCompressor` | `evaluate` | 已有 |
 | `ScopesCompressor` | `scopes` | **新建** |
-| ~~ExceptionInfoCompressor~~ | — | **不做（本轮）** |
+| `ExceptionInfoCompressor` | `exceptionInfo` | **已有** |
 
 ---
 
@@ -122,6 +122,7 @@ launch → setBreakpoints → configurationDone
 | MCP tool | Agent SDK | DAP |
 |----------|-----------|-----|
 | `debug_launch` | `launch` | launch + 内部握手/configurationDone；可选内嵌 breakpoints |
+| `debug_attach` | `attach` | attach（adapter 专用 args） |
 | `set_breakpoints` | `set_breakpoints` | setBreakpoints |
 | `continue` | `continue_` | continue → wait stopped/terminated |
 | `step_over` | `step_over` | next |
@@ -133,6 +134,9 @@ launch → setBreakpoints → configurationDone
 | `get_scopes` | `get_scopes` | scopes（压缩+TOON） |
 | `get_variables` | `get_variables` | variables（压缩+TOON） |
 | `evaluate` | `evaluate` | evaluate（压缩+TOON） |
+| `get_exception` | `get_exception` | exceptionInfo（压缩+TOON） |
+| `get_source` | `get_source` | source |
+| `set_exception_breakpoints` | `set_exception_breakpoints` | setExceptionBreakpoints |
 | `get_output` | `drain_output` | 缓冲 output |
 | `wait_stopped` | `wait_stopped` | wait event stopped |
 | `disconnect` | `disconnect` | disconnect |
@@ -252,6 +256,7 @@ main()
 | 2026-07-20 | **P1 AgentPool**：DAP session-key pool（对照 lspz language pool）；apply-cycle archived |
 | 2026-07-20 | **P2 verify/doc-check**：`just qa`+`verify`；与 lspz 对齐但 e2e 仍走 harness/debugpy |
 | 2026-07-20 | **P3 metrics**：DAP `MeteredInterceptor`（对照 lspz Metred*）；env 开关 |
+| 2026-07-20 | **P4 Tier-1 异常 API**：MCP/SDK attach/source/exception；debugpy 仍为验证后端 |
 
 ---
 
@@ -266,7 +271,7 @@ main()
 | P1 | `add-agent-sdk-pool` | `agent_sdk/pool.rs` | ✅ 已 archive：DAP **session key**（非 LSP language）；Tier-0 委托 |
 | P2 | `add-just-verify-doc-check` | `just verify` / `doc-check` | ✅ 已 archive：qa+doc-check；verify=SDD+prek；harness 仍管 debugpy |
 | P3 | `add-metrics` | `metrics.rs` | ✅ 已 archive：`MeteredInterceptor` + `DAPZ_METRICS`；DAP 帧字节计量 |
-| P4 | `add-tier1-exception-apis` | MCP exception* | Tier-1 升一等公民（可选） |
+| P4 | `add-tier1-exception-apis` | MCP exception* | ✅ 已 archive：attach/source/exception + ExceptionInfoCompressor（DAP≠LSP diag） |
 | P5 | `add-daemon` | `daemon/*` | 长驻 session（明确延后，需单独决策） |
 
 **不做（除非新决策）**：workspace roots / uri / init / config_watcher（DAP 场景收益低于 LSP）。

@@ -37,6 +37,7 @@ pub use config::{CappingConfig, Config, OutputFormat};
 pub use error::DapzError;
 pub use interceptors::capping::CappingInterceptor;
 pub use interceptors::evaluate::EvaluateCompressor;
+pub use interceptors::exception::ExceptionInfoCompressor;
 pub use interceptors::output::OutputCompressor;
 pub use interceptors::scopes::ScopesCompressor;
 pub use interceptors::stacktrace::StackTraceCompressor;
