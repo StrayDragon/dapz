@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.3.1 (2026-07-20)
+
+Ops maturity + docs alignment with lspz.
+
+- **Lifecycle**: daemon idle reaper；`DapPool` dead/idle reap；`DaemonClient` `owns_daemon` Drop shutdown
+- **Tests**: `tests/daemon_integration.rs`
+- **Discovery**: optional `lldb-dap` / `lldb-vscode` for c/cpp/rust
+- **Tooling**: `just qa` runs prek when available；CI builds docs + doctests
+- **Docs**: README 产品化结构；`_PLAN.md` §0/§9 收口 + 成熟度债表
+
 ## v0.3.0 (2026-07-20)
 
 Long-lived DAP daemon + MCP auto-connect (aligned with lspz; DAP cwd/session model).

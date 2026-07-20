@@ -33,7 +33,8 @@ pub mod agent_sdk;
 // Re-exports for convenience.
 pub use adapters::{
     AdapterInfo, DiscoveryContext, lookup_by_extension, lookup_by_language,
-    resolve_python_debug_adapter, resolve_python_debug_adapter_in, resolve_tool, resolve_tool_in,
+    resolve_lldb_debug_adapter, resolve_lldb_debug_adapter_in, resolve_python_debug_adapter,
+    resolve_python_debug_adapter_in, resolve_tool, resolve_tool_in,
 };
 pub use codec::toon::value_to_toon;
 pub use config::{CappingConfig, Config, OutputFormat};

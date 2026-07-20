@@ -19,9 +19,10 @@ lint:
 test:
     cargo test --all-features
 
-# Run all checks (qa = fmt-check + lint + test + doc-check).
+# Run all checks (qa = fmt-check + lint + test + doc-check + prek).
 qa: fmt-check lint test doc-check
     @echo "All checks passed!"
+    @if command -v prek >/dev/null 2>&1; then prek run --all-files; else echo "WARN  prek not installed — skip (run: just setup)"; fi
 
 alias check := qa
 alias ci := qa
