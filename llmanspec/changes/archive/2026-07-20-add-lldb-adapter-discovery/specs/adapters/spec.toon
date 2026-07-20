@@ -1,0 +1,7 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r56,lldb 发现,"系统 MUST 提供 resolve_lldb_debug_adapter，按 lldb-dap 再 lldb-vscode 顺序经 resolve_tool 查找。",null,null,null
+  modify_requirement,r1,扩展名多后端,"系统 MUST 按文件扩展名解析 AdapterInfo（py→debugpy；c/cpp/rs→lldb）。",null,null,null
+op_scenarios[2]{req_id,id,given,when,then}:
+  r56,"prefer-lldb-dap",PATH 同时有 lldb-dap 与 lldb-vscode,resolve_lldb_debug_adapter_in,返回 lldb-dap
+  r1,"lookup-rs",扩展名 rs,lookup_by_extension,返回 language=rust 且 backend 含 lldb

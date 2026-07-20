@@ -1,7 +1,8 @@
 //! Debug adapter lookup and path discovery.
 //!
-//! Minimal mapping for Tier-0 (debugpy). Discovery checks common package-manager
-//! install locations so agents / harnesses work without hand-tuned `PATH`.
+//! Tier-0 backends: **debugpy** (required for harness) and optional **lldb-dap** /
+//! **lldb-vscode** for C/C++/Rust. Discovery checks common package-manager install
+//! locations so agents / harnesses work without hand-tuned `PATH`.
 
 use std::path::{Path, PathBuf};
 
@@ -69,6 +70,18 @@ pub fn lookup_by_extension(ext: &str) -> Option<AdapterInfo> {
             backend: resolve_python_debug_adapter()
                 .unwrap_or_else(|| "python3 -m debugpy.adapter".into()),
         }),
+        "c" | "h" => Some(AdapterInfo {
+            language: "c",
+            backend: resolve_lldb_debug_adapter().unwrap_or_else(|| "lldb-dap".into()),
+        }),
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" => Some(AdapterInfo {
+            language: "cpp",
+            backend: resolve_lldb_debug_adapter().unwrap_or_else(|| "lldb-dap".into()),
+        }),
+        "rs" => Some(AdapterInfo {
+            language: "rust",
+            backend: resolve_lldb_debug_adapter().unwrap_or_else(|| "lldb-dap".into()),
+        }),
         _ => None,
     }
 }
@@ -80,6 +93,18 @@ pub fn lookup_by_language(language: &str) -> Option<AdapterInfo> {
             language: "python",
             backend: resolve_python_debug_adapter()
                 .unwrap_or_else(|| "python3 -m debugpy.adapter".into()),
+        }),
+        "c" => Some(AdapterInfo {
+            language: "c",
+            backend: resolve_lldb_debug_adapter().unwrap_or_else(|| "lldb-dap".into()),
+        }),
+        "cpp" | "c++" => Some(AdapterInfo {
+            language: "cpp",
+            backend: resolve_lldb_debug_adapter().unwrap_or_else(|| "lldb-dap".into()),
+        }),
+        "rust" | "rs" => Some(AdapterInfo {
+            language: "rust",
+            backend: resolve_lldb_debug_adapter().unwrap_or_else(|| "lldb-dap".into()),
         }),
         _ => None,
     }
@@ -172,6 +197,27 @@ pub fn resolve_python_debug_adapter_in(ctx: &DiscoveryContext) -> Option<String>
     None
 }
 
+/// Discover an LLDB-based DAP adapter (`lldb-dap` or legacy `lldb-vscode`).
+///
+/// Search order (first hit wins):
+/// 1. `lldb-dap` via [`resolve_tool`]
+/// 2. `lldb-vscode` via [`resolve_tool`]
+///
+/// Optional second backend after debugpy — not required for harness.
+pub fn resolve_lldb_debug_adapter() -> Option<String> {
+    resolve_lldb_debug_adapter_in(&DiscoveryContext::from_env())
+}
+
+/// Same as [`resolve_lldb_debug_adapter`], with explicit context.
+pub fn resolve_lldb_debug_adapter_in(ctx: &DiscoveryContext) -> Option<String> {
+    for name in ["lldb-dap", "lldb-vscode"] {
+        if let Some(p) = resolve_tool_in(name, ctx) {
+            return Some(p.to_string_lossy().into_owned());
+        }
+    }
+    None
+}
+
 fn uv_tools_debugpy_adapter(ctx: &DiscoveryContext) -> Option<String> {
     let data = ctx.data_home()?;
     let tool_bin = data.join("uv/tools/debugpy/bin");
@@ -246,8 +292,35 @@ mod tests {
 
     #[test]
     fn test_lookup_unknown() {
-        assert!(lookup_by_extension("rs").is_none());
-        assert!(lookup_by_language("rust").is_none());
+        assert!(lookup_by_extension("java").is_none());
+        assert!(lookup_by_language("go").is_none());
+    }
+
+    #[test]
+    fn test_lookup_lldb_languages() {
+        let rust = lookup_by_language("rust").unwrap();
+        assert_eq!(rust.language, "rust");
+        assert!(
+            rust.backend.contains("lldb"),
+            "expected lldb backend, got {}",
+            rust.backend
+        );
+        let cpp = lookup_by_extension("cpp").unwrap();
+        assert_eq!(cpp.language, "cpp");
+    }
+
+    #[test]
+    fn test_resolve_lldb_prefers_lldb_dap() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path_dir = tmp.path().join("path");
+        touch_exec(&path_dir.join("lldb-dap"));
+        touch_exec(&path_dir.join("lldb-vscode"));
+        let ctx = DiscoveryContext {
+            path_dirs: vec![path_dir.clone()],
+            ..DiscoveryContext::default()
+        };
+        let found = resolve_lldb_debug_adapter_in(&ctx).unwrap();
+        assert_eq!(found, path_dir.join("lldb-dap").to_string_lossy());
     }
 
     #[test]

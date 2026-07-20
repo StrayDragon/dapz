@@ -1,5 +1,6 @@
 //! Daemon client — connect to a running dapz daemon (optional auto-start).
 
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -19,18 +20,28 @@ const DAEMON_STARTUP_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Client connection to a dapz daemon.
 pub struct DaemonClient {
+    socket_path: PathBuf,
     reader: BufReader<tokio::io::ReadHalf<UnixStream>>,
     writer: tokio::io::WriteHalf<UnixStream>,
     next_id: u64,
+    /// Whether this client is responsible for daemon lifecycle.
+    owns_daemon: bool,
 }
 
 impl DaemonClient {
     /// Connect to an existing daemon for `cwd`, or spawn `dapz daemon` in the background.
     pub async fn connect_or_start(cwd: &str) -> Result<Self, anyhow::Error> {
         let socket_path = socket_path_for_cwd(cwd);
-        if let Ok(stream) = UnixStream::connect(&socket_path).await {
-            info!(path = %socket_path.display(), "Connected to existing dapz daemon");
-            return Ok(Self::from_stream(stream));
+
+        // Try connecting to an existing daemon first.
+        match UnixStream::connect(&socket_path).await {
+            Ok(stream) => {
+                info!(path = %socket_path.display(), "Connected to existing dapz daemon");
+                return Ok(Self::from_stream(stream, socket_path, false));
+            }
+            Err(_) => {
+                // Daemon not running — auto-start.
+            }
         }
 
         info!(path = %socket_path.display(), "No daemon found, auto-starting");
@@ -39,9 +50,21 @@ impl DaemonClient {
         let start = std::time::Instant::now();
         while start.elapsed() < DAEMON_STARTUP_TIMEOUT {
             tokio::time::sleep(Duration::from_millis(200)).await;
-            if let Ok(stream) = UnixStream::connect(&socket_path).await {
-                info!("Connected to freshly spawned dapz daemon");
-                return Ok(Self::from_stream(stream));
+            match UnixStream::connect(&socket_path).await {
+                Ok(stream) => {
+                    info!("Connected to freshly spawned dapz daemon");
+                    return Ok(Self::from_stream(stream, socket_path, true));
+                }
+                Err(e)
+                    if e.kind() == ErrorKind::ConnectionRefused
+                        || e.kind() == ErrorKind::NotFound =>
+                {
+                    continue;
+                }
+                Err(e) => {
+                    warn!(error = %e, "Unexpected error connecting to daemon");
+                    continue;
+                }
             }
         }
         Err(anyhow::anyhow!(
@@ -50,12 +73,31 @@ impl DaemonClient {
         ))
     }
 
-    fn from_stream(stream: UnixStream) -> Self {
+    /// Connect to a daemon at a specific socket path (for testing).
+    pub async fn connect_explicit(socket: &PathBuf) -> Result<Self, anyhow::Error> {
+        let stream = UnixStream::connect(socket)
+            .await
+            .with_context(|| format!("Cannot connect to daemon at {:?}", socket))?;
+        Ok(Self::from_stream(stream, socket.clone(), false))
+    }
+
+    /// Check if daemon is already running (without auto-start).
+    pub async fn try_connect(cwd: &str) -> Result<Option<Self>, anyhow::Error> {
+        let socket_path = socket_path_for_cwd(cwd);
+        match UnixStream::connect(&socket_path).await {
+            Ok(stream) => Ok(Some(Self::from_stream(stream, socket_path, false))),
+            Err(_) => Ok(None),
+        }
+    }
+
+    fn from_stream(stream: UnixStream, socket_path: PathBuf, owns_daemon: bool) -> Self {
         let (rh, wh) = tokio::io::split(stream);
         Self {
+            socket_path,
             reader: BufReader::new(rh),
             writer: wh,
             next_id: 1,
+            owns_daemon,
         }
     }
 
@@ -75,7 +117,10 @@ impl DaemonClient {
         // Drain orphan responses (id mismatch) until ours arrives — mirrors lspz.
         loop {
             let mut line = String::new();
-            self.reader.read_line(&mut line).await?;
+            tokio::time::timeout(Duration::from_secs(30), self.reader.read_line(&mut line))
+                .await
+                .context("Timeout waiting for daemon response")?
+                .context("Daemon connection closed")?;
             if line.trim().is_empty() {
                 continue;
             }
@@ -85,7 +130,9 @@ impl DaemonClient {
                 warn!(
                     expected = id,
                     got = resp.id,
-                    "discarding orphan daemon response"
+                    error = ?resp.error,
+                    "Drained orphan/out-of-order daemon response from a cancelled or \
+                     earlier request; protocol stays in sync",
                 );
                 continue;
             }
@@ -178,6 +225,49 @@ impl DaemonClient {
             .call("daemon/shutdown", Value::Object(Default::default()))
             .await?;
         Ok(())
+    }
+}
+
+impl Drop for DaemonClient {
+    fn drop(&mut self) {
+        if !self.owns_daemon {
+            debug!("DaemonClient dropped (owns_daemon=false)");
+            return;
+        }
+        let socket = self.socket_path.clone();
+        debug!(
+            ?socket,
+            "DaemonClient dropped (owns_daemon=true); requesting shutdown"
+        );
+        // Best-effort: Drop cannot await. Open a fresh connection on a helper
+        // thread so we do not block the runtime that may still own this client.
+        std::thread::Builder::new()
+            .name("dapz-daemon-shutdown".into())
+            .spawn(move || {
+                let rt = match tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        warn!(error = %e, "Failed to build runtime for daemon shutdown");
+                        return;
+                    }
+                };
+                rt.block_on(async {
+                    match DaemonClient::connect_explicit(&socket).await {
+                        Ok(mut client) => {
+                            if let Err(e) = client.shutdown().await {
+                                warn!(error = %e, "daemon/shutdown after Drop failed");
+                            }
+                        }
+                        Err(e) => {
+                            debug!(error = %e, "Could not connect to shut down owned daemon");
+                        }
+                    }
+                });
+            })
+            .ok();
     }
 }
 

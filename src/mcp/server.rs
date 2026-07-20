@@ -632,7 +632,7 @@ impl McpServer {
         cwd: Option<&str>,
     ) -> Result<Arc<Mutex<DapSession>>, ErrorData> {
         let key = pool_key(backend, cwd);
-        let pool = self.pool.lock().await;
+        let mut pool = self.pool.lock().await;
         pool.get_by_key(&key).ok_or_else(|| {
             ErrorData::invalid_request(
                 format!("No session for key '{key}'. Call debug_launch first."),

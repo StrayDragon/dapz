@@ -57,9 +57,16 @@ impl DapSession {
         self.last_used_at = Instant::now();
     }
 
-    /// Last I/O time (for pool idle reaping later).
+    /// Last I/O time (for pool idle reaping).
     pub fn last_used_at(&self) -> Instant {
         self.last_used_at
+    }
+
+    /// Check whether the adapter child process has exited.
+    pub fn try_wait(
+        &mut self,
+    ) -> Result<Option<std::process::ExitStatus>, crate::error::DapzError> {
+        self.transport.try_wait()
     }
 
     fn buffer_event(&mut self, event: String, body: Value) {

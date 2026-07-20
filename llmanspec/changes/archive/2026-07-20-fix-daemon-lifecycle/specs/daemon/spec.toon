@@ -1,0 +1,7 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r54,idle 回收,"daemon MUST 周期性 reap 空闲 DAP 会话；当 pool 为空且无客户端连接持续空闲时 MUST 自行 shutdown 并清理 socket。",null,null,null
+  add_requirement,r55,owns_daemon,"DaemonClient 在自动启动 daemon 时 MUST 标记 owns_daemon；Drop 时 MUST best-effort 请求 daemon/shutdown。",null,null,null
+op_scenarios[2]{req_id,id,given,when,then}:
+  r54,"reap-idle",会话超过 idle TTL 无 I/O,reaper 周期到达,会话从 pool 移除
+  r55,"drop-shutdown",connect_or_start 新启的 daemon,Client Drop,daemon 收到 shutdown 或进程退出

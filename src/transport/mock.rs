@@ -16,6 +16,8 @@ pub struct MockTransport {
     rx_queue: Mutex<VecDeque<Vec<u8>>>,
     /// All data sent through this transport.
     sent: Mutex<Vec<Vec<u8>>>,
+    /// When set, [`Transport::try_wait`] reports the process as exited.
+    exited: Mutex<bool>,
 }
 
 impl MockTransport {
@@ -24,7 +26,13 @@ impl MockTransport {
         Self {
             rx_queue: Mutex::new(VecDeque::new()),
             sent: Mutex::new(Vec::new()),
+            exited: Mutex::new(false),
         }
+    }
+
+    /// Mark this mock as a dead child process (for pool reaping tests).
+    pub fn mark_exited(&self) {
+        *self.exited.lock().unwrap() = true;
     }
 
     /// Push a raw framed message onto the receive queue.
@@ -60,6 +68,17 @@ impl Transport for MockTransport {
     }
 
     fn try_wait(&mut self) -> Result<Option<ExitStatus>, DapzError> {
+        if *self.exited.lock().unwrap() {
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::ExitStatusExt;
+                return Ok(Some(ExitStatus::from_raw(0)));
+            }
+            #[cfg(not(unix))]
+            {
+                return Ok(None);
+            }
+        }
         Ok(None)
     }
 }

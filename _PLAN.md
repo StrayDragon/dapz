@@ -13,12 +13,12 @@
 | 决策 | 选择 |
 |------|------|
 | 代码共享 | **分开写**；从 lspz **文件级 copy-port** |
-| 准发布范围 | Proxy + TOON + MCP + Agent SDK + harness（**不做** daemon / SDD / 多 adapter） |
+| 准发布范围 | Proxy + TOON + MCP + Agent SDK + harness + **daemon**（v0.3+） |
 | Tier-0 收紧（2026-07-20） | 首版砍 attach/source/exception；**P4 已升一等公民**（仍保留 `send_raw`） |
-| 参考后端 | **debugpy** 唯一必测 |
+| 参考后端 | **debugpy** 必测；**lldb-dap** 可选发现 |
 | 默认输出 | MCP/SDK：**TOON**；Proxy：`json` / `toon` / `passthrough` |
-| 版本目标 | **v0.3.0** ✅（daemon + MCP auto-connect） |
-| 后续工程 | **v0.2+** 经 llman SDD 逐项跟进 lspz 成熟度（见 §9） |
+| 版本目标 | **v0.3.1** ✅（lifecycle + lldb discovery + docs/CI） |
+| 后续工程 | 经 llman SDD 跟进 lspz 成熟度（见 §9）；**不做** uri / init / workspace roots / config_watcher |
 
 ---
 
@@ -113,7 +113,7 @@ launch → setBreakpoints → configurationDone
 | T11 | deps 对齐 | Cargo.toml | `--all-features` 编过 | [x] |
 | T12 | harness | 自研 | `just harness` | [x] |
 
-**不移植（0.1）**：daemon、workspace roots、init、uri、metrics、config_watcher、exception 相关。
+**历史备注（0.1 准发布）**：当时不移植 daemon / metrics / exception；其后 P3–P5 已落地。仍跳过：workspace roots、init、uri、config_watcher。
 
 ---
 
@@ -233,10 +233,11 @@ main()
 ## 7. Agent 开工指令
 
 ```text
-1. 严格 Phase A→D；只读 ../lspz；不抽 crate；不做 daemon。
-2. 不实现 attach/source/exceptionInfo 专用 API。
-3. 完成 ID 后勾选本文件并写 §8。
-4. v0.2+：走 llman SDD（propose → apply → verify → archive）；先 bootstrap 基线 specs。
+1. 只读 ../lspz；不抽共享 crate；文件级 copy-port。
+2. DAP 专用模型：session/cwd（非 LSP language/workspace/docs）。
+3. 不做 uri / init / workspace roots / config_watcher（除非新决策）。
+4. 增量走 llman SDD（propose → apply → verify → archive）；BDD 保持关闭。
+5. 触及 discovery / debug 时跑 just harness。
 ```
 
 ---
@@ -257,6 +258,8 @@ main()
 | 2026-07-20 | **P2 verify/doc-check**：`just qa`+`verify`；与 lspz 对齐但 e2e 仍走 harness/debugpy |
 | 2026-07-20 | **P3 metrics**：DAP `MeteredInterceptor`（对照 lspz Metred*）；env 开关 |
 | 2026-07-20 | **P4 Tier-1 异常 API**：MCP/SDK attach/source/exception；debugpy 仍为验证后端 |
+| 2026-07-20 | **v0.3.0**：daemon + MCP auto-connect；README 产品化；CI doc；lldb 发现；daemon lifecycle |
+| 2026-07-20 | **P6**：idle reaper / pool reap / owns_daemon；daemon_integration 测 |
 
 ---
 
@@ -267,21 +270,37 @@ main()
 
 | 优先级 | 候选 change id | 对照 lspz | 说明 |
 |--------|----------------|-----------|------|
-| P0 | `docs-bootstrap-baseline-specs` | `llmanspec/specs/*` | ✅ 已 archive（2026-07-20）；9 条基线 capability |
-| P1 | `add-agent-sdk-pool` | `agent_sdk/pool.rs` | ✅ 已 archive：DAP **session key**（非 LSP language）；Tier-0 委托 |
-| P2 | `add-just-verify-doc-check` | `just verify` / `doc-check` | ✅ 已 archive：qa+doc-check；verify=SDD+prek；harness 仍管 debugpy |
-| P3 | `add-metrics` | `metrics.rs` | ✅ 已 archive：`MeteredInterceptor` + `DAPZ_METRICS`；DAP 帧字节计量 |
-| P4 | `add-tier1-exception-apis` | MCP exception* | ✅ 已 archive：attach/source/exception + ExceptionInfoCompressor（DAP≠LSP diag） |
-| P5 | `add-daemon` | `daemon/*` | ✅ 已 archive；后续 `add-mcp-daemon-connect`：MCP 默认经 daemon + `--no-daemon` |
+| P0 | `docs-bootstrap-baseline-specs` | `llmanspec/specs/*` | ✅ 已 archive |
+| P1 | `add-agent-sdk-pool` | `agent_sdk/pool.rs` | ✅ session key（非 LSP language） |
+| P2 | `add-just-verify-doc-check` | `just verify` / `doc-check` | ✅ qa+verify；harness 管 debugpy |
+| P3 | `add-metrics` | `metrics.rs` | ✅ `MeteredInterceptor` + `DAPZ_METRICS` |
+| P4 | `add-tier1-exception-apis` | MCP exception* | ✅ attach/source/exception |
+| P5 | `add-daemon` + `add-mcp-daemon-connect` | `daemon/*` | ✅ cwd socket；MCP 默认 daemon |
+| P6 | `fix-daemon-lifecycle` | idle reaper / owns_daemon | ✅ pool reap + daemon idle + Drop shutdown |
+| P7 | `add-lldb-adapter-discovery` | languages 多后端 | ✅ `lldb-dap`/`lldb-vscode`（可选） |
 
-**不做（除非新决策）**：workspace roots / uri / init / config_watcher（LSP 工作区模型；DAP 收益低）。
+### 成熟度债（未做 / 低优先）
+
+| 项 | 说明 | 建议 |
+|----|------|------|
+| Proxy `--metrics` CLI | 现仅 `DAPZ_METRICS` env | 可选 |
+| Proxy `--transport` tcp/ws | 库有、CLI 仅 stdio | 低（适配器多为 stdio） |
+| Proxy 默认 toon | 现默认 json（IDE 友好） | 产品决策 |
+| `config_watcher` | notify 未接线 | **跳过**（除非热调 capping） |
+| `init` / uri / MCP Roots | LSP 工作区模型 | **跳过** |
+| Agent SDK → daemon | 仍进程内 session | 可后续 |
+| lldb e2e | 仅发现，无 harness | 可选 job |
+
+**不做（除非新决策）**：workspace roots / uri / init / config_watcher。
 
 ### 与 lspz 架构对照（成熟度）
 
-| 面 | lspz | dapz（本轮后） | 差异要点 |
-|----|------|----------------|----------|
-| Pool | language + workspace | **session key** / backend+cwd | 无文档同步 |
-| MCP | diagnostics/completions | launch/attach/stack/vars/**exception** | 协议不同 |
+| 面 | lspz | dapz | 差异要点 |
+|----|------|------|----------|
+| Pool | language + workspace + reap | **backend+cwd** + reap/idle | 无文档同步 |
+| MCP | diagnostics/completions | launch/attach/stack/vars/exception | 协议不同 |
 | Metrics | Metred* on LSP params | Metered on **DAP frames** | 计量对象不同 |
 | Verify | verify-all | `just verify` + **`just harness`(debugpy)** | e2e 后端不同 |
-| Daemon | 有 | **有**（cwd socket；MCP 默认 auto-connect） | 无 LSP 文档同步 / roots |
+| Daemon | idle reaper + owns | **同构**（cwd socket） | 无 LSP roots |
+| Discovery | 多语言 LS | debugpy **+ lldb** | DAP 后端少 |
+| README | 产品卡片 | 已对齐结构 | 保留拦截器差异化 |

@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use serde_json::json;
@@ -69,6 +69,13 @@ impl DaemonServer {
         let status = self.status.clone();
         let active_connections = self.active_connections.clone();
 
+        spawn_idle_reaper(
+            pool.clone(),
+            status.clone(),
+            active_connections.clone(),
+            shutdown_tx.clone(),
+        );
+
         loop {
             tokio::select! {
                 _ = shutdown_rx.changed() => {
@@ -82,6 +89,10 @@ impl DaemonServer {
                         Ok((stream, _)) => {
                             active_connections.fetch_add(1, Ordering::Relaxed);
                             status.lock().await.record_connection();
+                            debug!(
+                                active = active_connections.load(Ordering::Relaxed),
+                                "Daemon: new client connection"
+                            );
                             let pool = pool.clone();
                             let status = status.clone();
                             let conns = active_connections.clone();
@@ -101,6 +112,7 @@ impl DaemonServer {
             }
         }
 
+        // Graceful teardown: drop sessions (kills children), then remove socket.
         pool.lock().await.clear();
         status.lock().await.sessions.clear();
         if self.socket_path.exists() {
@@ -109,6 +121,72 @@ impl DaemonServer {
         info!(path = %self.socket_path.display(), "Daemon stopped cleanly");
         Ok(())
     }
+}
+
+/// Reclaim an idle DAP session after this long without I/O.
+const SESSION_IDLE_TTL: Duration = Duration::from_secs(10 * 60);
+
+/// Once the pool is empty **and** no client is connected, wait this long before
+/// the daemon shuts itself down.
+const DAEMON_IDLE_TTL: Duration = Duration::from_secs(10 * 60);
+
+/// How often the reaper rechecks idle state.
+const REAPER_CHECK_INTERVAL: Duration = Duration::from_secs(60);
+
+/// Spawn the background idle reaper.
+///
+/// Periodically reaps quiet DAP sessions and, once the daemon has had no
+/// sessions and no connections for [`DAEMON_IDLE_TTL`], signals shutdown so
+/// the main loop can clear the pool and remove the socket cleanly.
+fn spawn_idle_reaper(
+    pool: Arc<Mutex<DapPool>>,
+    status: Arc<Mutex<DaemonStatus>>,
+    active_connections: Arc<AtomicU64>,
+    shutdown_tx: watch::Sender<bool>,
+) {
+    tokio::spawn(async move {
+        let mut daemon_idle_since: Option<Instant> = None;
+        loop {
+            tokio::time::sleep(REAPER_CHECK_INTERVAL).await;
+
+            if *shutdown_tx.borrow() {
+                break;
+            }
+
+            let reaped = pool.lock().await.reap_idle(SESSION_IDLE_TTL);
+            if reaped > 0 {
+                info!(reaped, "Reaped idle DAP sessions");
+                let live_keys = pool.lock().await.keys();
+                status
+                    .lock()
+                    .await
+                    .sessions
+                    .retain(|key| live_keys.contains(key));
+            }
+
+            let busy = {
+                let pool_guard = pool.lock().await;
+                !pool_guard.is_empty() || active_connections.load(Ordering::Relaxed) > 0
+            };
+
+            if busy {
+                if daemon_idle_since.is_some() {
+                    debug!("Daemon active again, cancelling pending self-exit");
+                }
+                daemon_idle_since = None;
+            } else if daemon_idle_since.is_none() {
+                daemon_idle_since = Some(Instant::now());
+                info!(
+                    ttl_secs = DAEMON_IDLE_TTL.as_secs(),
+                    "Daemon is idle; will self-exit if it stays unused"
+                );
+            } else if daemon_idle_since.unwrap().elapsed() >= DAEMON_IDLE_TTL {
+                info!("Daemon idle timeout reached, requesting shutdown");
+                let _ = shutdown_tx.send(true);
+                break;
+            }
+        }
+    });
 }
 
 struct ConnectionGuard(Arc<AtomicU64>);
@@ -218,7 +296,7 @@ async fn dispatch(
         "dap/invoke" => match serde_json::from_value::<InvokeParams>(req.params) {
             Ok(params) => {
                 let session = {
-                    let p = pool.lock().await;
+                    let mut p = pool.lock().await;
                     p.get_by_key(&params.session_key)
                 };
                 match session {
@@ -247,7 +325,7 @@ async fn dispatch(
         "dap/request" => match serde_json::from_value::<DapRequestParams>(req.params) {
             Ok(params) => {
                 let session = {
-                    let p = pool.lock().await;
+                    let mut p = pool.lock().await;
                     p.get_by_key(&params.session_key)
                 };
                 match session {
@@ -270,7 +348,7 @@ async fn dispatch(
             Ok(params) => {
                 let timeout = Duration::from_millis(params.timeout_ms.unwrap_or(30_000));
                 let session = {
-                    let p = pool.lock().await;
+                    let mut p = pool.lock().await;
                     p.get_by_key(&params.session_key)
                 };
                 match session {
