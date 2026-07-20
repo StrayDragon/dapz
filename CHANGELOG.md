@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Discovery**: generalized `resolve_tool` / `DiscoveryContext` (PATH → `~/.local/bin` → cargo/go/npm/bun defaults); mock-HOME unit tests; `check-env` clean-PATH probe
+- **Docs**: `_PLAN.md` §9 v0.2 SDD backlog; ROADMAP CLI/`just harness`; tip + README install notes
+- **SDD**: `llmanspec/` + `.agents/skills/llman-sdd-*` scaffolding
+
 ## v0.1.0 (2026-07-20)
 
 Agent-usable Tier-0 DAP surface (aligned with lspz patterns; no shared crate).

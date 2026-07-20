@@ -4,6 +4,7 @@
 > **规格依据**：[`docs/DAP-Specification.html`](docs/DAP-Specification.html)
 > **模式依据**：`../lspz` v0.11.x（**只读参考，不抽共享 crate**）
 > **策略**：Agent「发现 bug / 观测行为」**收紧后的最小闭环**；其余 **透传**。
+> **SDD**：自 2026-07-20 起增量变更走 `llmanspec/` + `.agents/skills/llman-sdd-*`（见根 `AGENTS.md` managed block）。
 
 ---
 
@@ -16,7 +17,8 @@
 | Tier-0 收紧（2026-07-20） | **砍掉** `attach` / `source` / `exceptionInfo` / `setExceptionBreakpoints`（→ Tier-1 透传 + `send_raw`） |
 | 参考后端 | **debugpy** 唯一必测 |
 | 默认输出 | MCP/SDK：**TOON**；Proxy：`json` / `toon` / `passthrough` |
-| 版本目标 | **v0.1.0** |
+| 版本目标 | **v0.1.0** ✅ 已发布 |
+| 后续工程 | **v0.2+** 经 llman SDD 逐项跟进 lspz 成熟度（见 §9） |
 
 ---
 
@@ -111,7 +113,7 @@ launch → setBreakpoints → configurationDone
 | T11 | deps 对齐 | Cargo.toml | `--all-features` 编过 | [x] |
 | T12 | harness | 自研 | `just harness` | [x] |
 
-**不移植**：daemon、workspace roots、init、uri、metrics、config_watcher、exception 相关。
+**不移植（0.1）**：daemon、workspace roots、init、uri、metrics、config_watcher、exception 相关。
 
 ---
 
@@ -205,6 +207,7 @@ main()
 - `just harness-env`：rustc、python3、`import debugpy`、`cargo build --features mcp,agent-sdk`
 - `just harness`：env → fmt-check → clippy → test → ignored e2e
 - CI 无 debugpy：e2e SKIP；本地准发布：e2e 必跑
+- clean-PATH：`env -i HOME=… PATH=/usr/bin:/bin` 仍能发现 `~/.local/bin` / uv tools / cargo bin 下的 adapter
 
 ---
 
@@ -216,9 +219,10 @@ main()
 - [x] `just qa` 绿（`--all-features`）
 - [x] README + CHANGELOG **0.1.0**
 
-### 延后（两边一起做）
+### 延后
 
-- [ ] 包管理器默认路径自动发现完备化 — 见 [`docs/tips/00-tool-path-discovery.md`](docs/tips/00-tool-path-discovery.md)（lspz 同步副本 `../lspz/docs/tips/`）
+- [x] dapz 包管理器默认路径自动发现完备化 — [`docs/tips/00-tool-path-discovery.md`](docs/tips/00-tool-path-discovery.md)
+- [ ] lspz 同步扩展 `languages.rs`（同 tip）
 
 ---
 
@@ -228,6 +232,7 @@ main()
 1. 严格 Phase A→D；只读 ../lspz；不抽 crate；不做 daemon。
 2. 不实现 attach/source/exceptionInfo 专用 API。
 3. 完成 ID 后勾选本文件并写 §8。
+4. v0.2+：走 llman SDD（propose → apply → verify → archive）；先 bootstrap 基线 specs。
 ```
 
 ---
@@ -243,3 +248,22 @@ main()
 | 2026-07-20 | **Phase B+C 完成**：DapSession/Pool/MCP 17 tools/AgentHandle；harness 脚本落地；e2e 待 debugpy |
 | 2026-07-20 | `just qa`/clippy all-features 绿；`check-env` 缺 debugpy（预期） |
 | 2026-07-20 | **准发布 0.1.0**：发现 `~/.local/bin`+uv tools；修 debugpy late-initialized launch；`just harness` PASS；D4 透传测；tip 两边备案 |
+| 2026-07-20 | **SDD 引入**：`llmanspec/` + `.agents/skills`；`resolve_tool` 完备化；§9 v0.2；**P0 bootstrap specs archived** |
+
+---
+
+## 9. v0.2+ 草稿（SDD 驱动，跟进 lspz）
+
+> 原则：不抽共享 crate；文件级 copy-port；**每个能力一条 SDD change**。
+> 前置：bootstrap 基线 `llmanspec/specs/*`（反映 0.1 现状）后再改行为。
+
+| 优先级 | 候选 change id | 对照 lspz | 说明 |
+|--------|----------------|-----------|------|
+| P0 | `docs-bootstrap-baseline-specs` | `llmanspec/specs/*` | ✅ 已 archive（2026-07-20）；9 条基线 capability |
+| P1 | `add-agent-sdk-pool` | `agent_sdk/pool.rs` | 独立 AgentPool（与 MCP pool 对称） |
+| P2 | `add-just-verify-doc-check` | `just verify` / `doc-check` | 工程门禁对齐 |
+| P3 | `add-metrics` | `metrics.rs` | 压缩比/延迟观测 |
+| P4 | `add-tier1-exception-apis` | MCP exception* | Tier-1 升一等公民（可选） |
+| P5 | `add-daemon` | `daemon/*` | 长驻 session（明确延后，需单独决策） |
+
+**不做（除非新决策）**：workspace roots / uri / init / config_watcher（DAP 场景收益低于 LSP）。

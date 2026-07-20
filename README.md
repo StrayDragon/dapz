@@ -58,6 +58,14 @@ DAP Server → [CappingInterceptor] → [OutputCompressor] → [EvaluateCompress
 
 ## 快速开始
 
+### 安装 debug 后端（推荐）
+
+```bash
+uv tool install debugpy
+# 无需 export PATH：dapz 会自动搜 ~/.local/bin 与 uv tools 默认布局
+# 详见 docs/tips/00-tool-path-discovery.md
+```
+
 ### 三种用法
 
 **CLI 代理** — 透明压缩 DAP 流量：
@@ -192,9 +200,10 @@ just qa               # 全部检查（fmt + lint + test）
 
 ### 集成测试
 
-需要 `debugpy-adapter` 在 PATH 上（通过 `uv tool install debugpy` 安装）：
+推荐 `uv tool install debugpy`。adapter 不必在 PATH 上——`resolve_tool` / harness 会查 `~/.local/bin` 与 uv tools 默认目录。
 
 ```bash
+just harness-env
 just test-integration
 ```
 
