@@ -1,10 +1,10 @@
 # dapz 准发布对齐计划（可实施 / 可验证）
 
-> **临时 SSOT**：本文件驱动「一步到位模仿 `../lspz`」的实现。完成后归档到 `docs/plan/` 或删除。
+> **状态（2026-07-21）**：v0.3.1 **准发布能力已齐**（Proxy + TOON + MCP + Agent SDK + harness + daemon）。本文保留为历史实施 SSOT；日常以 [ROADMAP.md](ROADMAP.md) / [CHANGELOG.md](CHANGELOG.md) 为准。
+>
 > **规格依据**：[`docs/DAP-Specification.html`](docs/DAP-Specification.html)
 > **模式依据**：`../lspz` v0.11.x（**只读参考，不抽共享 crate**）
-> **策略**：Agent「发现 bug / 观测行为」**收紧后的最小闭环**；其余 **透传**。
-> **SDD**：自 2026-07-20 起增量变更走 `llmanspec/` + `.agents/skills/llman-sdd-*`（见根 `AGENTS.md` managed block）。
+> **SDD**：增量变更走 `llmanspec/` + `.agents/skills/llman-sdd-*`（见根 `AGENTS.md`）。
 
 ---
 

@@ -51,7 +51,7 @@ dapz proxy --metrics --backend "python3 -m debugpy.adapter"
 dapz proxy --transport tcp://127.0.0.1:4711 --backend unused
 ```
 
-**MCP 服务器** — 把调试能力暴露给 Cursor 等 Agent（默认经 daemon 复用会话）：
+**MCP 服务器** — 把调试能力暴露给 Cursor / Claude Desktop 等（默认经 daemon 复用会话）：
 
 ```bash
 cargo install dapz --features mcp
@@ -61,6 +61,19 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 ```
 
 工具：`debug_launch` / `debug_attach` → `get_stack` / `get_scopes` / `get_variables` / `evaluate` / `get_exception` → `step_*` / `continue` → `disconnect`（21 tools）。
+
+> **无 `dapz init`**：不像 lspz 的 `lspz init --global`，当前**不会**自动改 `~/.claude.json` / 项目 MCP 配置。请在客户端手写 MCP server，例如 Claude Code：
+>
+> ```json
+> {
+>   "mcpServers": {
+>     "dapz": {
+>       "command": "dapz",
+>       "args": ["mcp"]
+>     }
+>   }
+> }
+> ```
 
 ## 压缩效果
 
@@ -142,12 +155,13 @@ dapz daemon --cwd /path/to/project list
 ## 安装
 
 ```bash
-# 推荐：安装 debugpy 后端（harness 必测）
-uv tool install debugpy
-# 可选：lldb-dap / lldb-vscode（C/C++/Rust；`just harness` 会跑可选 e2e）
-
+# 从 crates.io（默认 cli）
 cargo install dapz
+
+# 启用 MCP / daemon
 cargo install dapz --features mcp
+
+# Agent SDK（隐含 mcp）
 cargo install dapz --features agent-sdk
 
 # 从源码
@@ -155,7 +169,19 @@ git clone https://github.com/straydragon/dapz && cd dapz
 cargo install --path . --features mcp
 ```
 
-路径发现会搜 `PATH`、`~/.local/bin`、uv tools 等，详见 [docs/tips/00-tool-path-discovery.md](docs/tips/00-tool-path-discovery.md)。
+### 调试适配器（无需改 PATH）
+
+推荐用包管理器默认布局；dapz 按 PATH → `~/.local/bin` → uv tools / cargo 等顺序发现：
+
+```bash
+# 必测：Python debugpy
+uv tool install debugpy
+
+# 可选：C/C++/Rust（lldb-dap / lldb-vscode）
+# pacman -S lldb   # 或系统包提供 lldb-dap
+```
+
+详见 [docs/tips/00-tool-path-discovery.md](docs/tips/00-tool-path-discovery.md)。
 
 ## 快速验证
 
@@ -183,10 +209,12 @@ Proxy CLI 常用参数见 `dapz proxy --help`（`--backend`、`--output`、cappi
 ## 文档
 
 - [API 参考](https://docs.rs/dapz) — 从 `///` 注释自动生成
+- [CHANGELOG.md](CHANGELOG.md) / [ROADMAP.md](ROADMAP.md) — 版本与路线
+- [DAP 兼容面](docs/specs/002-dap-compatibility.md) — adapter / threadId / `dapz-compress/1`
+- [压缩基准](docs/src/benchmarks.md) — `just gen-bench`
 - [DAP 规范](docs/DAP-Specification.html) — Debug Adapter Protocol 参考
 - [AGENTS.md](AGENTS.md) — 项目约定与架构不变量
 - [llmanspec/](llmanspec/) — SDD 规格（`llman sdd list --specs`）
-- [拦截器细节](docs/) — 压缩策略与架构图（`docs/src/`）
 
 ## 许可证
 

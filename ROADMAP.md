@@ -1,11 +1,11 @@
 # dapz Project Roadmap
 
-> **dap** **z**ip — 对 AI Coding Agent 极其友好的 DAP 压缩代理
+> **dap** **z**ip — 对 AI Coding Agent 友好的 DAP 压缩代理
+> **当前**：v0.3.1（准发布能力已齐；相对 lspz 为早期 0.x）
 
 ## 项目愿景
 
-构建一个**三模态 DAP 压缩代理系统**，通过 Token 敏感的智能压缩，让 AI Coding Agent
-用更少上下文理解更多调试信息。
+构建**三模态 DAP 压缩代理**：Proxy / MCP(+daemon) / Agent SDK，用 token 敏感压缩让调试观测更省上下文。
 
 ---
 
@@ -22,80 +22,104 @@
         ▼                       ▼                       ▼
 ┌───────────────────┐  ┌───────────────────┐  ┌───────────────────┐
 │  Library Mode     │  │   Proxy Mode      │  │   MCP Mode        │
-│  (no-default)     │  │   (default=cli)   │  │   (feature mcp)   │
+│  (agent-sdk 等)   │  │   (default=cli)   │  │   (feature mcp)   │
 └───────────────────┘  └───────────────────┘  └───────────────────┘
 ```
 
 | 模式 | 目标用户 | 典型场景 | 集成方式 |
 |------|----------|----------|----------|
-| **Library** | 自研 Agent CLI | 完全控制，零开销 | `dapz::Proxy` / crate 的直接引用 |
-| **Proxy** | Claude Code/Continue/Cody | 即插即用，透明代理 | `dapz proxy --backend "python3 -m debugpy.adapter"` |
-| **MCP** | 快速实验/多工具协同 | 融入生态，按需查询 | MCP server 配置 |
+| **Library** | 自研 Agent | 嵌入 `AgentHandle` | `features = ["agent-sdk"]` |
+| **Proxy** | IDE / 管道 | 透明压缩 DAP 帧 | `dapz proxy --backend "…"` |
+| **MCP** | Cursor 等 | 工具化调试观测 | `dapz mcp`（默认经 daemon） |
 
 ---
 
 ## 功能特性总览
 
-### 拦截器
+### 拦截器（契约 `dapz-compress/1`）
 
-| 拦截器 | 覆盖方法 | 压缩策略 | Token 节省 |
-|--------|----------|----------|-----------|
-| `OutputCompressor` | `output` 事件 | 重复行折叠 + 类别缩写 | 30-60% |
-| `VariablesCompressor` | `variables` 响应 | 长值截断 + 类型前缀 | 20-40% |
-| `StackTraceCompressor` | `stackTrace` 响应 | 路径缩写 + 函数参数裁剪 | 40-70% |
-| `CappingInterceptor` | output / stackTrace / variables | 截断到 N 条后压缩 | 80-95% |
+| 拦截器 | 覆盖 | 策略概要 |
+|--------|------|----------|
+| `OutputCompressor` | `output` | ANSI / 重复行 / 噪音字段 |
+| `VariablesCompressor` | `variables` | 截断、类型前缀、数组摘要 |
+| `StackTraceCompressor` | `stackTrace` | 路径缩短、滤 synthetic |
+| `ScopesCompressor` | `scopes` | 去掉 location 噪音 |
+| `EvaluateCompressor` | `evaluate` | 截断 result |
+| `ExceptionInfoCompressor` | `exceptionInfo` | 截断 details |
+| `CappingInterceptor` | 大响应 | 条数 / 长度上限 |
+
+### 输出格式（与 lspz 对齐）
+
+| 格式 | Proxy | MCP / Agent SDK |
+|------|-------|-----------------|
+| `toon`（默认） | `body = {format:toon,text}` | 直接 TOON 文本（`toon-format`） |
+| `json` | 压缩后的 DAP JSON 帧 | — |
+| `passthrough` | 原字节，跳过拦截链 | — |
 
 ### 传输层
 
-| 传输 | Feature Flag | 说明 |
-|------|-------------|------|
-| `StdioTransport` | always | 子进程 stdio（默认） |
-| `TcpTransport` | always | TCP socket 连接 |
+| 传输 | 说明 |
+|------|------|
+| `StdioTransport` | 子进程 stdio（默认） |
+| `TcpTransport` | `tcp://host:port` |
 
+> WebSocket stub 已移除（DAP 不需要）。
+
+### 后端发现
+
+- **必测**：debugpy（`uv tool install debugpy` 等，无需手改 PATH）
+- **可选**：`lldb-dap` / `lldb-vscode`（C/C++/Rust）
+
+### 相对 lspz：刻意不做
+
+| 能力 | 状态 |
+|------|------|
+| `dapz init` / `--global`（Claude Code MCP 注入） | **无** — 需手写 MCP 配置；见 README |
+| MCP workspace roots / `uri` | **跳过**（DAP 用 `backend` + `cwd`） |
+| `config_watcher` | **跳过** |
+
+---
 
 ## 版本历史
 
 | 版本 | 里程碑 |
 |------|--------|
 | **v0.0.1** | crate name locking |
-| **v0.1.0** | MVP: Proxy + TOON + MCP + Agent SDK + harness |
-| **v0.2.0** *(当前)* | SDD + AgentPool + verify + metrics + Tier-1 exception APIs |
-| **v0.3.0** *(规划)* | daemon（长驻 DAP session；见 `_PLAN.md` §9 P5） |
+| **v0.1.0** | MVP：Proxy + TOON + MCP + Agent SDK + harness |
+| **v0.2.0** | SDD + AgentPool + verify + metrics + Tier-1 exception |
+| **v0.3.0** | daemon + MCP 默认连 daemon |
+| **v0.3.1** *(当前)* | lifecycle / lldb 发现与 e2e / Proxy 输出格式实装 / 协议硬化 / bench 自动同步 |
+| **后续 0.x** | 可选：`init` 注入、更多 adapter profile；经 llman SDD 推进 |
+
+详见 [CHANGELOG.md](CHANGELOG.md)。准发布实施记录见 [`_PLAN.md`](_PLAN.md)。
 
 ## 快速验证
 
 ```bash
-just fmt           # 格式化
-just lint          # clippy 检查
-just test          # 运行测试
-just qa            # 全部检查
-just harness-env   # debugpy / 路径发现
-just harness       # 本地准发布门禁（含 e2e）
+just qa            # fmt + clippy + test + doc + prek
+just harness       # 本地准发布门禁（debugpy e2e；lldb 可选）
+just gen-bench     # 刷新 benchmarks.md + README BENCH-SUMMARY
 ```
 
-### CLI 形态（与 lspz 对齐）
-
 ```bash
-dapz proxy --backend "…"   # 透明 DAP 压缩代理
-dapz mcp                   # MCP server（需 --features mcp）
+dapz proxy --backend "…"
+dapz mcp                   # 需 --features mcp
+dapz daemon --cwd .
 ```
 
 增量变更走 **llman SDD**（`llmanspec/` + `/llman-sdd-*` skills）。
 
 ## 技术栈
 
-- **Rust** 2024 edition
-- **Tokio** 异步运行时
-- **Serde** + **serde_json** 序列化
-- **Clap** CLI 参数解析
+- **Rust** 2024 edition（`rust-toolchain.toml`）
+- **Tokio** · **Serde** · **Clap** · **tracing** · **toon-format** · **rmcp**（mcp）
 
 ## 文档导航
 
-### 设计规格
-- [docs/specs/001-tri-modal-architecture.md](docs/specs/001-tri-modal-architecture.md) — 三模态架构
-
-### 开发指南
+- [README.md](README.md) — 用户入口
 - [AGENTS.md](AGENTS.md) — 项目规范 SSOT
+- [docs/specs/002-dap-compatibility.md](docs/specs/002-dap-compatibility.md) — adapter / threadId / 压缩契约
+- [docs/src/benchmarks.md](docs/src/benchmarks.md) — 压缩基准（`just gen-bench`）
 
 ## 许可证
 

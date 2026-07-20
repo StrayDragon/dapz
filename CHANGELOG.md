@@ -1,14 +1,22 @@
 # Changelog
 
-## v0.3.1 (2026-07-20)
+## v0.3.1 (2026-07-21)
 
-Ops maturity + docs alignment with lspz.
+Ops maturity + protocol / output-format alignment with lspz (docs refreshed).
 
 - **Lifecycle**: daemon idle reaper；`DapPool` dead/idle reap；`DaemonClient` `owns_daemon` Drop shutdown
-- **Tests**: `tests/daemon_integration.rs`
-- **Discovery**: optional `lldb-dap` / `lldb-vscode` for c/cpp/rust
-- **Tooling**: `just qa` runs prek when available；CI builds docs + doctests
-- **Docs**: README 产品化结构；`_PLAN.md` §0/§9 收口 + 成熟度债表
+- **Tests**: `tests/daemon_integration.rs`；optional `lldb_integration` e2e；debugpy / agent harness green
+- **Discovery**: optional `lldb-dap` / `lldb-vscode` for c/cpp/rust；package-manager layouts（uv / `~/.local/bin`）
+- **Proxy output formats**: `passthrough` 跳过拦截链；`json` 压缩 DAP 帧；`toon` 将 `body` 包成 `{format,text}`（对齐 lspz）
+- **TOON**: `value_to_toon` 改用官方 `toon-format::encode_default`
+- **Session**: `AdapterKind`（debugpy / lldb / generic）；`resolve_thread_id` 经 `threads`；dual-path `initialized`
+- **Agent SDK**: opt-in `via_daemon`（DAP 默认仍进程内）
+- **CLI**: proxy `--metrics` / `--transport`；默认 `--output toon`
+- **Bench**: `just gen-bench` 写 `docs/src/benchmarks.md` 并同步 README `BENCH-SUMMARY`；prek pre-push 可跑
+- **Transport**: 删除未使用的 WebSocket stub / feature
+- **Docs**: README 产品化；ROADMAP / CHANGELOG 对齐 0.3.1；`docs/specs/002-dap-compatibility.md`
+- **Tooling**: `just qa` 含 prek（若已安装）；CI docs + doctests
+- **Note**: 无 `dapz init`（Claude MCP 注入）——与 `_PLAN` 一致，需手写 MCP 配置
 
 ## v0.3.0 (2026-07-20)
 

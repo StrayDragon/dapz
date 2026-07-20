@@ -183,8 +183,10 @@ Project conventions for dapz (DAP compression proxy).
 ### 语义化版本
 
 - v0.0.1: crate name locking
-- v0.1.0: MVP (Proxy + Output compression)
-- v0.2.0+: Advanced interceptors
+- v0.1.0: MVP（Proxy + TOON + MCP + Agent SDK + harness）
+- v0.2.0: SDD + AgentPool + metrics + Tier-1 exception
+- v0.3.0: daemon + MCP 默认连 daemon
+- v0.3.1: lifecycle / lldb / Proxy 输出格式 / 协议硬化 / bench 同步（当前）
 
 ### 检查点规则
 
