@@ -75,14 +75,14 @@ dapz proxy --backend "python3 -m debugpy.adapter"
 dapz proxy --output toon --backend "python3 -m debugpy.adapter"
 ```
 
-**MCP 服务器** — 把 Tier-0 调试能力暴露给 Cursor 等 Agent：
+**MCP 服务器** — 把调试能力暴露给 Cursor 等 Agent：
 
 ```bash
 cargo install dapz --features mcp
 dapz mcp
 ```
 
-工具：`debug_launch` → `get_stack` / `get_scopes` / `get_variables` / `evaluate` → `step_*` / `continue` → `disconnect`（详见 `_PLAN.md` §3）。
+工具：`debug_launch` / `debug_attach` → `get_stack` / `get_scopes` / `get_variables` / `evaluate` / `get_exception` → `step_*` / `continue` → `disconnect`（21 tools；详见 `_PLAN.md` §3）。
 
 **Agent SDK** — 嵌入 Rust Agent：
 

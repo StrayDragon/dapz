@@ -14,7 +14,7 @@
 |------|------|
 | 代码共享 | **分开写**；从 lspz **文件级 copy-port** |
 | 准发布范围 | Proxy + TOON + MCP + Agent SDK + harness（**不做** daemon / SDD / 多 adapter） |
-| Tier-0 收紧（2026-07-20） | **砍掉** `attach` / `source` / `exceptionInfo` / `setExceptionBreakpoints`（→ Tier-1 透传 + `send_raw`） |
+| Tier-0 收紧（2026-07-20） | 首版砍 attach/source/exception；**P4 已升一等公民**（仍保留 `send_raw`） |
 | 参考后端 | **debugpy** 唯一必测 |
 | 默认输出 | MCP/SDK：**TOON**；Proxy：`json` / `toon` / `passthrough` |
 | 版本目标 | **v0.1.0** ✅ 已发布 |
@@ -143,7 +143,7 @@ launch → setBreakpoints → configurationDone
 | `terminate` | `terminate` | terminate |
 | `send_raw` | `send_raw` | 任意（Tier-1 逃生舱） |
 
-**已砍（勿实现专用 API）**：`debug_attach`、`get_source`、`get_exception`、`set_exception_breakpoints`。
+**已实现专用 API**：`debug_attach`、`get_source`、`get_exception`、`set_exception_breakpoints`（另保留 `send_raw`）。
 
 ---
 
@@ -217,7 +217,7 @@ main()
 
 ## 6. Go/No-Go
 
-- [x] §3 工具表全部实现（无已砍项）— MCP 17 tools + AgentHandle
+- [x] §3 工具表全部实现 — MCP **21** tools + AgentHandle（含 Tier-1 异常 API）
 - [x] Tier-1 透传回归测（D4）
 - [x] `just harness` 本地绿（debugpy via `~/.local/bin` / uv tools 发现）
 - [x] `just qa` 绿（`--all-features`）
