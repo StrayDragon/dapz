@@ -4,11 +4,10 @@
 
 use std::sync::Arc;
 
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncWriteExt, BufReader};
 use tokio::select;
 use tokio::sync::RwLock;
 
-use crate::codec::json_rpc;
 use crate::codec::json_rpc::DapMessage;
 use crate::config::Config;
 use crate::error::DapzError;
@@ -228,39 +227,12 @@ fn is_disconnect(raw: &[u8]) -> bool {
 
 /// Read one complete Content-Length framed message from stdin.
 async fn read_stdin_frame(reader: &mut BufReader<tokio::io::Stdin>) -> Result<Vec<u8>, DapzError> {
-    let mut header = String::new();
-    loop {
-        let mut line = String::new();
-        let n = reader.read_line(&mut line).await.map_err(|e| {
-            if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                DapzError::ServerExited
-            } else {
-                DapzError::Io(e)
-            }
-        })?;
-
-        if n == 0 {
-            return Err(DapzError::ServerExited);
-        }
-
-        header.push_str(&line);
-
-        if line == "\r\n" || line == "\n" {
-            break;
-        }
-    }
-
-    let content_length = json_rpc::parse_content_length(&header)?;
-    let mut body = vec![0u8; content_length as usize];
-    reader.read_exact(&mut body).await.map_err(|e| {
-        if e.kind() == std::io::ErrorKind::UnexpectedEof {
-            DapzError::ServerExited
-        } else {
-            DapzError::Io(e)
-        }
-    })?;
-
-    Ok([header.as_bytes(), &body].concat())
+    // Stdin is only used in the client→server select arm; a local FrameState is
+    // enough because we do not cancel this future mid-header across calls in a
+    // way that requires persistence beyond a single successful frame. For
+    // symmetry with transports we still use the shared cancel-safe reader.
+    let mut state = crate::transport::framing::FrameState::new();
+    crate::transport::framing::read_frame_with_state(reader, &mut state).await
 }
 
 #[cfg(test)]

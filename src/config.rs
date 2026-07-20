@@ -13,8 +13,10 @@ use crate::error::DapzError;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OutputFormat {
-    /// Standard JSON (default).
+    /// Standard JSON (default for proxy).
     Json,
+    /// TOON — token-efficient line protocol for LLM consumption (default for MCP/SDK).
+    Toon,
     /// Passthrough — no transformation in output.
     Passthrough,
 }
@@ -25,6 +27,7 @@ impl std::str::FromStr for OutputFormat {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.trim().to_lowercase().as_str() {
             "json" => Ok(Self::Json),
+            "toon" => Ok(Self::Toon),
             "passthrough" => Ok(Self::Passthrough),
             _ => Err(DapzError::Config(format!("unknown output format: {s}"))),
         }
@@ -95,6 +98,9 @@ pub struct Config {
     /// Whether to enable evaluate response compression.
     #[serde(default = "default_true")]
     pub enable_evaluate_compress: bool,
+    /// Whether to enable scopes response compression.
+    #[serde(default = "default_true")]
+    pub enable_scopes_compress: bool,
     /// Output format.
     #[serde(default = "default_output_format")]
     pub output_format: OutputFormat,
@@ -124,6 +130,7 @@ impl Default for Config {
             enable_variables_compress: true,
             enable_stacktrace_compress: true,
             enable_evaluate_compress: true,
+            enable_scopes_compress: true,
             output_format: OutputFormat::Json,
             log_level: "info".into(),
         }
@@ -151,6 +158,7 @@ impl Config {
             "variables_compressor" => self.enable_variables_compress,
             "stacktrace_compressor" => self.enable_stacktrace_compress,
             "evaluate_compressor" => self.enable_evaluate_compress,
+            "scopes_compressor" => self.enable_scopes_compress,
             _ => true,
         }
     }
@@ -165,6 +173,7 @@ pub struct ConfigBuilder {
     enable_variables_compress: Option<bool>,
     enable_stacktrace_compress: Option<bool>,
     enable_evaluate_compress: Option<bool>,
+    enable_scopes_compress: Option<bool>,
     output_format: Option<OutputFormat>,
     log_level: Option<String>,
 }
@@ -197,6 +206,12 @@ impl ConfigBuilder {
     /// Enable or disable evaluate response compression.
     pub fn enable_evaluate_compress(mut self, enable: bool) -> Self {
         self.enable_evaluate_compress = Some(enable);
+        self
+    }
+
+    /// Enable or disable scopes response compression.
+    pub fn enable_scopes_compress(mut self, enable: bool) -> Self {
+        self.enable_scopes_compress = Some(enable);
         self
     }
 
@@ -261,6 +276,15 @@ impl ConfigBuilder {
             })
             .unwrap_or(true);
 
+        let enable_scopes_compress = self
+            .enable_scopes_compress
+            .or_else(|| {
+                std::env::var("DAPZ_ENABLE_SCOPES_COMPRESS")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+            })
+            .unwrap_or(true);
+
         let log_level = self
             .log_level
             .or_else(|| std::env::var("DAPZ_LOG_LEVEL").ok())
@@ -306,6 +330,7 @@ impl ConfigBuilder {
             enable_variables_compress,
             enable_stacktrace_compress,
             enable_evaluate_compress,
+            enable_scopes_compress,
             output_format,
             log_level,
         })

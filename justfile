@@ -13,11 +13,11 @@ fmt:
 
 # Run cargo clippy with strict lints.
 lint:
-    cargo clippy
+    cargo clippy --all-features -- -D warnings
 
 # Run cargo test.
 test:
-    cargo test
+    cargo test --all-features
 
 # Run all checks (qa = fmt-check + lint + test).
 qa: fmt-check lint test
@@ -33,6 +33,14 @@ fmt-check:
 # Run integration tests with debugpy (requires debugpy-adapter on PATH).
 test-integration:
     cargo test --test debugpy_integration -- --ignored --test-threads=1
+
+# Environment check for harness (rustc, python, debugpy, mcp build).
+harness-env:
+    bash scripts/check-env.sh
+
+# Full local gate: env + fmt + clippy + test + ignored e2e.
+harness:
+    bash scripts/run-harness.sh
 
 # Run Criterion throughput benchmarks.
 bench:

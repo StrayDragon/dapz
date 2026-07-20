@@ -30,7 +30,7 @@ Agent (DAP 客户端) ←→ dapz ←→ DAP 服务器 (debugpy, lldb-vscode, ..
 
 ```
 DAP Server → [CappingInterceptor] → [OutputCompressor] → [EvaluateCompressor]
-           → [VariablesCompressor] → [StackTraceCompressor] → Agent
+           → [VariablesCompressor] → [StackTraceCompressor] → [ScopesCompressor] → Agent
 ```
 
 | 拦截器 | 作用 | 失败行为 |
@@ -40,6 +40,7 @@ DAP Server → [CappingInterceptor] → [OutputCompressor] → [EvaluateCompress
 | `EvaluateCompressor` | 截断结果、移除内存地址 | 透传原始消息 |
 | `VariablesCompressor` | 类型前缀、数组摘要、长值截断、移除噪声字段 | 透传原始消息 |
 | `StackTraceCompressor` | 过滤合成帧、路径去重+缩写、函数参数裁剪、移除噪声字段 | 透传原始消息 |
+| `ScopesCompressor` | 去掉 source/line 等位置噪声，保留 variablesReference | 透传原始消息 |
 
 ## 压缩效果
 
@@ -57,23 +58,42 @@ DAP Server → [CappingInterceptor] → [OutputCompressor] → [EvaluateCompress
 
 ## 快速开始
 
-### 作为 CLI 代理运行
+### 三种用法
+
+**CLI 代理** — 透明压缩 DAP 流量：
 
 ```bash
-# 基本用法
-dapz --backend "python3 -m debugpy.adapter"
-
-# 带后端参数
-dapz --backend lldb-vscode
-
-# 限制输出
-dapz --max-output-length 2000 --backend debug-adapter
-
-# 禁用特定压缩器
-dapz --compress-stacktrace false --backend debug-adapter
+dapz proxy --backend "python3 -m debugpy.adapter"
+dapz proxy --output toon --backend "python3 -m debugpy.adapter"
 ```
 
-### 作为库使用
+**MCP 服务器** — 把 Tier-0 调试能力暴露给 Cursor 等 Agent：
+
+```bash
+cargo install dapz --features mcp
+dapz mcp
+```
+
+工具：`debug_launch` → `get_stack` / `get_scopes` / `get_variables` / `evaluate` → `step_*` / `continue` → `disconnect`（详见 `_PLAN.md` §3）。
+
+**Agent SDK** — 嵌入 Rust Agent：
+
+```toml
+dapz = { version = "0.1", default-features = false, features = ["agent-sdk"] }
+```
+
+```rust
+use dapz::agent_sdk::AgentHandle;
+
+let mut agent = AgentHandle::builder()
+    .backend("python3 -m debugpy.adapter")
+    .start()
+    .await?;
+let stopped = agent.launch("script.py", None, None, Some(&[("script.py".into(), vec![10])])).await?;
+let stack = agent.get_stack(Some(1), Some(20)).await?;
+```
+
+### 作为库使用（拦截器）
 
 ```toml
 [dependencies]
@@ -90,6 +110,14 @@ let chain = InterceptorChain::new(
     config,
 );
 let compressed = chain.process(msg, Direction::ServerToClient).await?;
+```
+
+## 验证
+
+```bash
+just qa            # fmt + clippy + test
+just harness-env   # rustc / python / debugpy / mcp build
+just harness       # 全部门禁（含 debugpy e2e）
 ```
 
 ## CLI 选项

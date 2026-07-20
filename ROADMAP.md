@@ -57,8 +57,8 @@
 
 | 版本 | 里程碑 |
 |------|--------|
-| **v0.0.1** *(当前)* | crate name locking |
-| **v0.1.0** *(计划)* | MVP (Proxy + Output compression) |
+| **v0.0.1** | crate name locking |
+| **v0.1.0** *(当前)* | MVP: Proxy + TOON + MCP + Agent SDK + harness |
 
 ## 快速验证
 

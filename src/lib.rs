@@ -11,11 +11,8 @@
 //! | `agent-sdk` | Agent SDK API | no |
 //! | `transport-tcp` | TCP transport | no |
 //! | `transport-websocket` | WebSocket transport | no |
-//!
-//! ## Architecture
-//!
-//! [MermaidChart:./docs/mmd/architecture.mmd]
 
+pub mod adapters;
 pub mod codec;
 pub mod config;
 pub mod error;
@@ -23,12 +20,23 @@ pub mod interceptors;
 pub mod proxy;
 pub mod transport;
 
+#[cfg(feature = "mcp")]
+pub mod mcp;
+
+#[cfg(feature = "agent-sdk")]
+pub mod agent_sdk;
+
 // Re-exports for convenience.
+pub use adapters::{
+    AdapterInfo, lookup_by_extension, lookup_by_language, resolve_python_debug_adapter,
+};
+pub use codec::toon::value_to_toon;
 pub use config::{CappingConfig, Config, OutputFormat};
 pub use error::DapzError;
 pub use interceptors::capping::CappingInterceptor;
 pub use interceptors::evaluate::EvaluateCompressor;
 pub use interceptors::output::OutputCompressor;
+pub use interceptors::scopes::ScopesCompressor;
 pub use interceptors::stacktrace::StackTraceCompressor;
 pub use interceptors::variables::VariablesCompressor;
 pub use proxy::{Direction, Proxy, State};
