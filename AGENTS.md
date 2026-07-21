@@ -107,6 +107,7 @@ Project conventions for dapz (DAP compression proxy).
 - `just lint` = 运行 clippy
 - `just test` = 运行测试
 - `just qa` = fmt-check + lint + test
+- `just bench-report` / `just gen-bench` = 从 `fixtures/bench` 再生压缩比率报告（写 `docs/src/benchmarks.md`，并同步 `README.md` 的 `BENCH-SUMMARY` 块）；`prek` pre-push 也会跑 `gen-bench`
 - Shell: `bash -euo pipefail`
 
 ---
