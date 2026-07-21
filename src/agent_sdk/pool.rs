@@ -20,6 +20,8 @@ pub struct AgentPool {
     handles: HashMap<String, AgentHandle>,
     backends: HashMap<String, BackendConfig>,
     compression: bool,
+    via_daemon: bool,
+    cwd: Option<String>,
 }
 
 struct BackendConfig {
@@ -33,6 +35,7 @@ impl std::fmt::Debug for AgentPool {
             .field("sessions", &self.backends.keys().collect::<Vec<_>>())
             .field("active_handles", &self.handles.len())
             .field("compression", &self.compression)
+            .field("via_daemon", &self.via_daemon)
             .finish()
     }
 }
@@ -48,12 +51,15 @@ impl AgentPool {
             let cfg = self.backends.get(session).ok_or_else(|| {
                 DapzError::Config(format!("no backend registered for session '{session}'"))
             })?;
-            let handle = AgentHandle::builder()
+            let mut builder = AgentHandle::builder()
                 .backend(&cfg.backend)
                 .backend_args(cfg.backend_args.clone())
                 .enable_compression(self.compression)
-                .start()
-                .await?;
+                .via_daemon(self.via_daemon);
+            if let Some(ref cwd) = self.cwd {
+                builder = builder.cwd(cwd.clone());
+            }
+            let handle = builder.start().await?;
             tracing::info!(session, "DAP handle created via pool");
             self.handles.insert(session.to_owned(), handle);
         }
@@ -308,6 +314,8 @@ impl AgentPool {
 pub struct AgentPoolBuilder {
     backends: Vec<(String, String, Vec<String>)>,
     compression: bool,
+    via_daemon: bool,
+    cwd: Option<String>,
 }
 
 impl AgentPoolBuilder {
@@ -335,6 +343,18 @@ impl AgentPoolBuilder {
         self
     }
 
+    /// Opt-in: spawn handles via dapz daemon (default: in-process).
+    pub fn via_daemon(mut self, enabled: bool) -> Self {
+        self.via_daemon = enabled;
+        self
+    }
+
+    /// Project cwd for daemon socket / pool key when `via_daemon` is set.
+    pub fn cwd(mut self, cwd: impl Into<String>) -> Self {
+        self.cwd = Some(cwd.into());
+        self
+    }
+
     /// Build an [`AgentPool`] with registered backends.
     ///
     /// Sessions are **not** spawned eagerly — they are created lazily on first use.
@@ -354,6 +374,8 @@ impl AgentPoolBuilder {
             handles: HashMap::new(),
             backends,
             compression: self.compression,
+            via_daemon: self.via_daemon,
+            cwd: self.cwd,
         })
     }
 }

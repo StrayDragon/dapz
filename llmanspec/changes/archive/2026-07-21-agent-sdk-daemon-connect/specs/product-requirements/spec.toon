@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r27,"三模态加 daemon","系统 MUST 支持 Library、Proxy CLI、MCP（默认经 daemon），并 MAY 直接运行 dapz daemon；Agent SDK MUST 支持 opt-in via_daemon 复用同一 daemon；无 LSP 文档同步。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r27,"sdk-via-daemon",Agent SDK via_daemon true,调用 launch,会话落在 daemon pool

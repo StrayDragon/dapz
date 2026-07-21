@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r55,owns_daemon,"DaemonClient 在自动启动 daemon 时 MUST 标记 owns_daemon；Drop 时 MUST best-effort 请求 daemon/shutdown；Agent SDK 经 daemon 路径 MUST 复用同一 owns_daemon 语义。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r55,"sdk-drop-shutdown",AgentHandle 经 connect_or_start 持有 owns_daemon,句柄 Drop,daemon 收到 shutdown 或进程退出

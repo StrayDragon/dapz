@@ -5,12 +5,12 @@ valid_scope[2]: src/,tests/
 requirements[5]{req_id,title,statement}:
   r11,AI 友好 DAP 代理,系统 MUST 构建对 AI Coding Agent 友好的 DAP 压缩代理层。
   r19,Token 压缩,系统 MUST 对 Server→Client 方向的 DAP 消息进行 Token 敏感压缩；压缩失败时 MUST 透传原始消息。
-  r27,三模态加 daemon MCP,系统 MUST 支持 Library、Proxy CLI、MCP（默认经 daemon），并 MAY 直接运行 dapz daemon；无 LSP 文档同步。
+  r27,三模态加 daemon,"系统 MUST 支持 Library、Proxy CLI、MCP（默认经 daemon），并 MAY 直接运行 dapz daemon；Agent SDK MUST 支持 opt-in via_daemon 复用同一 daemon；无 LSP 文档同步。"
   r34,"Tier-0 加 Tier-1 异常",系统 MUST 以 launch 闭环为默认路径，并 MUST 提供 attach/source/exceptionInfo/setExceptionBreakpoints 专用 MCP/SDK API（仍可用 send_raw）。
   r38,DAP 兼容透传,系统 MUST 对非拦截白名单的 DAP 消息保持透传兼容（body 语义不变）。
 scenarios[5]{req_id,id,given,when,then,feature}:
   r11,"agent-debug-loop",Agent 使用 dapz MCP 或 Agent SDK,"执行 Tier-0 调试循环",可观测 stack/vars/output 并完成 disconnect,false
   r19,"compress-or-passthrough",拦截器内部错误,处理 ServerToClient 消息,转发原始消息且会话不崩溃,false
-  r27,"mcp-via-daemon",dapz mcp 默认模式,Agent 调用 debug_launch,会话落在 daemon pool,true
+  r27,"sdk-via-daemon",Agent SDK via_daemon true,调用 launch,会话落在 daemon pool,true
   r34,"exception-tools-present",list_tools,检查工具名,包含 get_exception 与 set_exception_breakpoints,true
   r38,"tier1-passthrough",未压缩的 DAP 响应,经 Proxy 转发,body 与后端一致,false
