@@ -1,8 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.4.0 (2026-07-21)
 
-- **Init**: `dapz init`（`--global` / `--show` / `--uninstall` / `--dry-run` / `--force` / `--no-patch`）对齐 lspz：注册 `mcpServers.dapz`、写入 `DAPZ.md`、注入 `@DAPZ.md`
+Claude Code `init` parity with lspz + docs/release alignment.
+
+- **Init**: `dapz init`（`--global` / `--show` / `--uninstall` / `--dry-run` / `--force` / `--no-patch`）：注册 `mcpServers.dapz`、写入 `DAPZ.md`、注入 `@DAPZ.md`
+- **Docs**: ROADMAP / README / CHANGELOG 反映准发布完成态
 
 ## v0.3.1 (2026-07-21)
 
@@ -18,9 +21,7 @@ Ops maturity + protocol / output-format alignment with lspz (docs refreshed).
 - **CLI**: proxy `--metrics` / `--transport`；默认 `--output toon`
 - **Bench**: `just gen-bench` 写 `docs/src/benchmarks.md` 并同步 README `BENCH-SUMMARY`；prek pre-push 可跑
 - **Transport**: 删除未使用的 WebSocket stub / feature
-- **Docs**: README 产品化；ROADMAP / CHANGELOG 对齐 0.3.1；`docs/specs/002-dap-compatibility.md`
-- **Tooling**: `just qa` 含 prek（若已安装）；CI docs + doctests
-- **Note**: `dapz init` 见 Unreleased（Claude MCP 注入，对齐 lspz）
+- **Docs**: README 产品化；ROADMAP / CHANGELOG 对齐；`docs/specs/002-dap-compatibility.md`
 
 ## v0.3.0 (2026-07-20)
 

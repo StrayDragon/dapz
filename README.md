@@ -39,7 +39,7 @@ DAP Server → [Capping] → [Output] → [Evaluate] → [Variables]
 
 ```toml
 [dependencies]
-dapz = { version = "0.3", default-features = false, features = ["agent-sdk"] }
+dapz = { version = "0.4", default-features = false, features = ["agent-sdk"] }
 ```
 
 **CLI 代理** — 透明压缩 DAP 流量：

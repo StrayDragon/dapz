@@ -286,12 +286,13 @@ main()
 | Proxy `--metrics` / `--transport` | ✅ CLI 已对齐 lspz 形态 | 完成 |
 | Proxy 默认 toon | ✅ 与 MCP/SDK 一致；IDE 用 `--output json` | 完成 |
 | `config_watcher` | notify 未接线 | **跳过**（除非热调 capping） |
-| `init` / uri / MCP Roots | LSP 工作区模型 | **跳过** |
+| `init` | Claude Code MCP 注入 | **已落地**（v0.4.0） |
+| uri / MCP Roots | LSP 工作区模型 | **跳过** |
 | Agent SDK → daemon | ✅ opt-in `via_daemon` | 完成 |
 | lldb e2e | ✅ 可选 ignored + harness（无适配器则 SKIP） | 完成 |
 | WsTransport | ✅ 已移除 stub + feature（DAP 不用） | 完成 |
 
-**不做（除非新决策）**：workspace roots / uri / init / config_watcher。
+**不做（除非新决策）**：workspace roots / uri / config_watcher。
 
 ### 与 lspz 架构对照（成熟度）
 
