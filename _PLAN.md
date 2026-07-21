@@ -18,7 +18,7 @@
 | 参考后端 | **debugpy** 必测；**lldb-dap** 可选发现 |
 | 默认输出 | MCP/SDK：**TOON**；Proxy：`json` / `toon` / `passthrough` |
 | 版本目标 | **v0.3.1** ✅（lifecycle + lldb discovery + docs/CI） |
-| 后续工程 | 经 llman SDD 跟进 lspz 成熟度（见 §9）；**不做** uri / init / workspace roots / config_watcher |
+| 后续工程 | 经 llman SDD 跟进 lspz 成熟度（见 §9）；**不做** uri / workspace roots / config_watcher（`init` 已落地） |
 
 ---
 

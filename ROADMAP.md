@@ -74,7 +74,7 @@
 
 | 能力 | 状态 |
 |------|------|
-| `dapz init` / `--global`（Claude Code MCP 注入） | **无** — 需手写 MCP 配置；见 README |
+| `dapz init` / `--global`（Claude Code MCP 注入） | ✅ 已对齐 lspz |
 | MCP workspace roots / `uri` | **跳过**（DAP 用 `backend` + `cwd`） |
 | `config_watcher` | **跳过** |
 

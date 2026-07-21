@@ -42,6 +42,38 @@ enum Commands {
     /// Run a long-lived DAP session daemon (requires `--features mcp`).
     #[command(name = "daemon", alias = "d")]
     Daemon(DaemonArgs),
+
+    /// Initialize Claude Code integration (MCP registration + context injection)
+    #[command(name = "init")]
+    Init {
+        /// Add to global config (`~/.claude.json`) instead of project-local
+        #[arg(short, long)]
+        global: bool,
+
+        /// Auto-patch settings without prompting (accepted for lspz CLI parity)
+        #[arg(long = "auto-patch")]
+        auto_patch: bool,
+
+        /// Skip MCP config patching (print manual instructions)
+        #[arg(long = "no-patch")]
+        no_patch: bool,
+
+        /// Show current dapz Claude Code configuration
+        #[arg(long)]
+        show: bool,
+
+        /// Remove dapz artifacts from Claude Code settings
+        #[arg(long)]
+        uninstall: bool,
+
+        /// Preview changes without writing any files
+        #[arg(long = "dry-run")]
+        dry_run: bool,
+
+        /// Force overwrite even if files are already up to date
+        #[arg(short, long)]
+        force: bool,
+    },
 }
 
 /// Arguments for `dapz daemon`.
@@ -186,6 +218,17 @@ async fn main() -> ExitCode {
         Commands::Proxy(args) => run_proxy(args).await,
         Commands::Mcp(args) => run_mcp(args).await,
         Commands::Daemon(args) => run_daemon(args).await,
+        Commands::Init {
+            global,
+            auto_patch,
+            no_patch,
+            show,
+            uninstall,
+            dry_run,
+            force,
+        } => dapz::init::run(
+            global, auto_patch, no_patch, show, uninstall, dry_run, force,
+        ),
     }
 }
 

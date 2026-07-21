@@ -1,0 +1,417 @@
+//! DAPZ.md awareness file and CLAUDE.md reference management.
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use super::constants::{CLAUDE_DIR_ENV, CLAUDE_MD, DAPZ_MD, DAPZ_MD_REF, DAPZ_SLIM};
+use crate::adapters::generate_adapter_table;
+use crate::error::DapzError;
+
+/// Resolve the target directory for awareness files.
+fn target_dir(global: bool) -> Result<PathBuf, DapzError> {
+    if global {
+        if let Ok(dir) = std::env::var(CLAUDE_DIR_ENV) {
+            return Ok(PathBuf::from(dir));
+        }
+        dirs::home_dir()
+            .map(|home| home.join(".claude"))
+            .ok_or_else(|| DapzError::Config("Cannot determine home directory".into()))
+    } else {
+        Ok(Path::new(".").join(".claude"))
+    }
+}
+
+/// Build the full DAPZ.md content (static template + dynamic language table).
+fn build_dapz_md_content() -> String {
+    let adapter_table = generate_adapter_table();
+    format!("{DAPZ_SLIM}\n## Discovered adapters\n\n{adapter_table}\n")
+}
+
+/// Write DAPZ.md to the target directory.
+///
+/// Returns `true` if the file was written, `false` if it already exists with the same content.
+pub fn write_dapz_md(global: bool, dry_run: bool, force: bool) -> Result<bool, DapzError> {
+    let dir = target_dir(global)?;
+    let path = dir.join(DAPZ_MD);
+    let content = build_dapz_md_content();
+
+    if !force && path.exists() {
+        let existing = fs::read_to_string(&path)
+            .map_err(|e| DapzError::Config(format!("Failed to read {}: {e}", path.display())))?;
+        if existing == content {
+            return Ok(false);
+        }
+    }
+
+    if dry_run {
+        return Ok(true);
+    }
+
+    fs::create_dir_all(&dir)
+        .map_err(|e| DapzError::Config(format!("Failed to create {}: {e}", dir.display())))?;
+
+    fs::write(&path, &content)
+        .map_err(|e| DapzError::Config(format!("Failed to write {}: {e}", path.display())))?;
+
+    Ok(true)
+}
+
+/// Remove DAPZ.md from the target directory.
+///
+/// Returns `true` if the file was removed, `false` if it didn't exist.
+pub fn remove_dapz_md(global: bool, dry_run: bool) -> Result<bool, DapzError> {
+    let dir = target_dir(global)?;
+    let path = dir.join(DAPZ_MD);
+
+    if !path.exists() {
+        return Ok(false);
+    }
+
+    if dry_run {
+        return Ok(true);
+    }
+
+    fs::remove_file(&path)
+        .map_err(|e| DapzError::Config(format!("Failed to remove {}: {e}", path.display())))?;
+
+    Ok(true)
+}
+
+/// Add `@DAPZ.md` reference to CLAUDE.md if not already present.
+///
+/// Returns `true` if CLAUDE.md was modified, `false` if the reference already exists.
+pub fn patch_claude_md_ref(global: bool, dry_run: bool, force: bool) -> Result<bool, DapzError> {
+    let dir = target_dir(global)?;
+    let path = dir.join(CLAUDE_MD);
+
+    if path.exists() {
+        let content = fs::read_to_string(&path)
+            .map_err(|e| DapzError::Config(format!("Failed to read {}: {e}", path.display())))?;
+
+        if !force && content.contains(DAPZ_MD_REF) {
+            return Ok(false);
+        }
+
+        // When force=true, deduplicate: strip any existing ref lines before appending.
+        let base = if force && content.contains(DAPZ_MD_REF) {
+            content
+                .lines()
+                .filter(|line| line.trim() != DAPZ_MD_REF.trim())
+                .collect::<Vec<_>>()
+                .join("\n")
+        } else {
+            content
+        };
+
+        if dry_run {
+            return Ok(true);
+        }
+
+        let new_content = format!("{}\n{DAPZ_MD_REF}\n", base.trim_end());
+        fs::write(&path, &new_content)
+            .map_err(|e| DapzError::Config(format!("Failed to write {}: {e}", path.display())))?;
+    } else {
+        if dry_run {
+            return Ok(true);
+        }
+
+        fs::create_dir_all(&dir)
+            .map_err(|e| DapzError::Config(format!("Failed to create {}: {e}", dir.display())))?;
+
+        fs::write(&path, format!("{DAPZ_MD_REF}\n"))
+            .map_err(|e| DapzError::Config(format!("Failed to write {}: {e}", path.display())))?;
+    }
+
+    Ok(true)
+}
+
+/// Remove `@DAPZ.md` reference from CLAUDE.md.
+///
+/// Returns `true` if CLAUDE.md was modified, `false` if the reference didn't exist.
+pub fn remove_claude_md_ref(global: bool, dry_run: bool) -> Result<bool, DapzError> {
+    let dir = target_dir(global)?;
+    let path = dir.join(CLAUDE_MD);
+
+    if !path.exists() {
+        return Ok(false);
+    }
+
+    let content = fs::read_to_string(&path)
+        .map_err(|e| DapzError::Config(format!("Failed to read {}: {e}", path.display())))?;
+
+    if !content.contains(DAPZ_MD_REF) {
+        return Ok(false);
+    }
+
+    if dry_run {
+        return Ok(true);
+    }
+
+    // Remove the reference line and any trailing blank line
+    let new_content = content
+        .lines()
+        .filter(|line| line.trim() != DAPZ_MD_REF.trim())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // Clean up trailing blank lines
+    let new_content = new_content.trim_end_matches('\n');
+
+    fs::write(path, format!("{new_content}\n"))
+        .map_err(|e| DapzError::Config(format!("Failed to write CLAUDE.md: {e}")))?;
+
+    Ok(true)
+}
+
+/// Check if DAPZ.md exists in the target directory.
+pub fn dapz_md_exists(global: bool) -> bool {
+    target_dir(global)
+        .map(|dir| dir.join(DAPZ_MD).exists())
+        .unwrap_or(false)
+}
+
+/// Check if CLAUDE.md contains the @DAPZ.md reference.
+pub fn claude_md_has_ref(global: bool) -> bool {
+    target_dir(global)
+        .and_then(|dir| {
+            let path = dir.join(CLAUDE_MD);
+            if path.exists() {
+                fs::read_to_string(&path)
+                    .map(|c| c.contains(DAPZ_MD_REF))
+                    .map_err(|e| DapzError::Config(format!("Failed to read CLAUDE.md: {e}")))
+            } else {
+                Ok(false)
+            }
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::sync::Mutex;
+    use tempfile::TempDir;
+
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
+
+    /// Helper: set DAPZ_CLAUDE_DIR to a temp dir, run the test, then restore.
+    /// Uses a mutex to serialize access to the process-wide env var.
+    fn with_temp_claude_dir<F: FnOnce(&Path)>(f: F) {
+        let _guard = ENV_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = TempDir::new().unwrap();
+        // SAFETY: Mutex guard ensures no concurrent env access.
+        unsafe {
+            env::set_var(CLAUDE_DIR_ENV, dir.path());
+        }
+        f(dir.path());
+        // SAFETY: Same as above.
+        unsafe {
+            env::remove_var(CLAUDE_DIR_ENV);
+        }
+    }
+
+    #[test]
+    fn write_dapz_md_creates_file() {
+        with_temp_claude_dir(|dir| {
+            let changed = write_dapz_md(true, false, false).unwrap();
+            assert!(changed);
+
+            let path = dir.join(DAPZ_MD);
+            assert!(path.exists());
+            let content = fs::read_to_string(&path).unwrap();
+            assert!(content.starts_with(DAPZ_SLIM));
+            assert!(content.contains("Discovered adapters"));
+        });
+    }
+
+    #[test]
+    fn write_dapz_md_idempotent() {
+        with_temp_claude_dir(|_| {
+            write_dapz_md(true, false, false).unwrap();
+            let changed = write_dapz_md(true, false, false).unwrap();
+            assert!(!changed);
+        });
+    }
+
+    #[test]
+    fn write_dapz_md_dry_run() {
+        with_temp_claude_dir(|dir| {
+            let changed = write_dapz_md(true, true, false).unwrap();
+            assert!(changed);
+            assert!(!dir.join(DAPZ_MD).exists());
+        });
+    }
+
+    #[test]
+    fn remove_dapz_md_removes_file() {
+        with_temp_claude_dir(|dir| {
+            write_dapz_md(true, false, false).unwrap();
+            let removed = remove_dapz_md(true, false).unwrap();
+            assert!(removed);
+            assert!(!dir.join(DAPZ_MD).exists());
+        });
+    }
+
+    #[test]
+    fn remove_dapz_md_no_file() {
+        with_temp_claude_dir(|_| {
+            let removed = remove_dapz_md(true, false).unwrap();
+            assert!(!removed);
+        });
+    }
+
+    #[test]
+    fn patch_claude_md_ref_creates_file() {
+        with_temp_claude_dir(|dir| {
+            let changed = patch_claude_md_ref(true, false, false).unwrap();
+            assert!(changed);
+
+            let content = fs::read_to_string(dir.join(CLAUDE_MD)).unwrap();
+            assert!(content.contains(DAPZ_MD_REF));
+        });
+    }
+
+    #[test]
+    fn patch_claude_md_ref_appends_to_existing() {
+        with_temp_claude_dir(|dir| {
+            fs::write(dir.join(CLAUDE_MD), "# Existing content\n").unwrap();
+            let changed = patch_claude_md_ref(true, false, false).unwrap();
+            assert!(changed);
+
+            let content = fs::read_to_string(dir.join(CLAUDE_MD)).unwrap();
+            assert!(content.starts_with("# Existing content"));
+            assert!(content.contains(DAPZ_MD_REF));
+        });
+    }
+
+    #[test]
+    fn patch_claude_md_ref_idempotent() {
+        with_temp_claude_dir(|_| {
+            patch_claude_md_ref(true, false, false).unwrap();
+            let changed = patch_claude_md_ref(true, false, false).unwrap();
+            assert!(!changed);
+        });
+    }
+
+    #[test]
+    fn patch_claude_md_ref_dry_run() {
+        with_temp_claude_dir(|dir| {
+            let changed = patch_claude_md_ref(true, true, false).unwrap();
+            assert!(changed);
+            assert!(!dir.join(CLAUDE_MD).exists());
+        });
+    }
+
+    #[test]
+    fn remove_claude_md_ref_removes_line() {
+        with_temp_claude_dir(|dir| {
+            patch_claude_md_ref(true, false, false).unwrap();
+            let removed = remove_claude_md_ref(true, false).unwrap();
+            assert!(removed);
+
+            let content = fs::read_to_string(dir.join(CLAUDE_MD)).unwrap();
+            assert!(!content.contains(DAPZ_MD_REF));
+        });
+    }
+
+    #[test]
+    fn remove_claude_md_ref_preserves_other_content() {
+        with_temp_claude_dir(|dir| {
+            fs::write(dir.join(CLAUDE_MD), "# Title\n@AGENTS.md\n").unwrap();
+            patch_claude_md_ref(true, false, false).unwrap();
+            remove_claude_md_ref(true, false).unwrap();
+
+            let content = fs::read_to_string(dir.join(CLAUDE_MD)).unwrap();
+            assert!(content.contains("# Title"));
+            assert!(content.contains("@AGENTS.md"));
+            assert!(!content.contains(DAPZ_MD_REF));
+        });
+    }
+
+    #[test]
+    fn remove_claude_md_ref_no_ref() {
+        with_temp_claude_dir(|dir| {
+            fs::write(dir.join(CLAUDE_MD), "# No ref here\n").unwrap();
+            let removed = remove_claude_md_ref(true, false).unwrap();
+            assert!(!removed);
+        });
+    }
+
+    #[test]
+    fn remove_claude_md_ref_no_file() {
+        with_temp_claude_dir(|_| {
+            let removed = remove_claude_md_ref(true, false).unwrap();
+            assert!(!removed);
+        });
+    }
+
+    #[test]
+    fn dapz_md_exists_true() {
+        with_temp_claude_dir(|_| {
+            write_dapz_md(true, false, false).unwrap();
+            assert!(dapz_md_exists(true));
+        });
+    }
+
+    #[test]
+    fn dapz_md_exists_false() {
+        with_temp_claude_dir(|_| {
+            assert!(!dapz_md_exists(true));
+        });
+    }
+
+    #[test]
+    fn claude_md_has_ref_true() {
+        with_temp_claude_dir(|_| {
+            patch_claude_md_ref(true, false, false).unwrap();
+            assert!(claude_md_has_ref(true));
+        });
+    }
+
+    #[test]
+    fn claude_md_has_ref_false() {
+        with_temp_claude_dir(|_| {
+            assert!(!claude_md_has_ref(true));
+        });
+    }
+
+    #[test]
+    fn write_dapz_md_force_overwrites() {
+        with_temp_claude_dir(|dir| {
+            // First write
+            write_dapz_md(true, false, false).unwrap();
+            let path = dir.join(DAPZ_MD);
+            let original_content = fs::read_to_string(&path).unwrap();
+
+            // Force write - should return true even though content is the same
+            let changed = write_dapz_md(true, false, true).unwrap();
+            assert!(changed);
+
+            // Content should still be valid
+            let new_content = fs::read_to_string(&path).unwrap();
+            assert_eq!(original_content, new_content);
+        });
+    }
+
+    #[test]
+    fn patch_claude_md_ref_force_deduplicates() {
+        with_temp_claude_dir(|dir| {
+            // First patch
+            patch_claude_md_ref(true, false, false).unwrap();
+            let content1 = fs::read_to_string(dir.join(CLAUDE_MD)).unwrap();
+            assert!(content1.contains(DAPZ_MD_REF));
+
+            // Force patch twice - must NOT produce duplicate lines
+            patch_claude_md_ref(true, false, true).unwrap();
+            patch_claude_md_ref(true, false, true).unwrap();
+
+            let content2 = fs::read_to_string(dir.join(CLAUDE_MD)).unwrap();
+            let ref_count = content2
+                .lines()
+                .filter(|line| line.trim() == DAPZ_MD_REF.trim())
+                .count();
+            assert_eq!(ref_count, 1, "force must not duplicate @DAPZ.md ref");
+        });
+    }
+}

@@ -15,6 +15,7 @@ pub mod adapters;
 pub mod codec;
 pub mod config;
 pub mod error;
+pub mod init;
 pub mod interceptors;
 pub mod metrics;
 pub mod proxy;
@@ -31,7 +32,7 @@ pub mod agent_sdk;
 
 // Re-exports for convenience.
 pub use adapters::{
-    AdapterInfo, DiscoveryContext, lookup_by_extension, lookup_by_language,
+    AdapterInfo, DiscoveryContext, generate_adapter_table, lookup_by_extension, lookup_by_language,
     resolve_lldb_debug_adapter, resolve_lldb_debug_adapter_in, resolve_python_debug_adapter,
     resolve_python_debug_adapter_in, resolve_tool, resolve_tool_in,
 };
