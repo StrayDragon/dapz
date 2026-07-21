@@ -85,8 +85,8 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 
 | 格式 | 说明 | 适用场景 |
 |------|------|---------|
-| `toon`（**proxy / MCP / SDK 默认**） | 自描述行协议 + 表格 | Agent / LLM 直连 |
-| `json` | 标准 JSON | IDE：`dapz proxy --output json` |
+| `toon`（默认） | 自描述行协议 + 表格；Proxy 将 `body` 包成 `{format:toon,text}`，MCP/SDK 直接返回 TOON 文本 | LLM / Agent 消费 |
+| `json` | 拦截链压缩后的紧凑 DAP JSON 帧 | IDE：`dapz proxy --output json` |
 | `passthrough` | 原始 DAP JSON 不动 | 调试 |
 
 Proxy 额外旋钮：`--metrics`（或 `DAPZ_METRICS`）、`--transport stdio|tcp://host:port`（默认 stdio）。
