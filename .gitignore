@@ -125,3 +125,4 @@ coverage/
 ### JetBrains ###
 .idea/
 *.iml
+/llmanspec/.context/pageindex/tree.json
