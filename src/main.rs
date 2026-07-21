@@ -20,7 +20,7 @@ use dapz::interceptors::scopes::ScopesCompressor;
 use dapz::interceptors::stacktrace::StackTraceCompressor;
 use dapz::interceptors::variables::VariablesCompressor;
 use dapz::metrics::{MeteredInterceptor, metrics_enabled_from_env};
-use dapz::{CappingConfig, Config, OutputFormat, Proxy, StdioTransport, Transport};
+use dapz::{CappingConfig, Config, OutputFormat, Proxy, StdioTransport, TcpTransport, Transport};
 use tokio::sync::RwLock;
 use tracing_subscriber::EnvFilter;
 
@@ -149,9 +149,17 @@ struct ProxyArgs {
     #[arg(long, env = "DAPZ_MAX_VALUE_LENGTH", default_value_t = 120)]
     max_value_length: usize,
 
-    /// Output format: json, toon, or passthrough
+    /// Output format: json (default, IDE-friendly), toon, or passthrough
     #[arg(short, long, env = "DAPZ_OUTPUT_FORMAT", default_value = "json")]
     output: String,
+
+    /// Enable runtime metrics on the interceptor chain (`DAPZ_METRICS` also works)
+    #[arg(long, default_value_t = false)]
+    metrics: bool,
+
+    /// Backend transport: `stdio` (default), `tcp://host:port`, or `ws://`/`wss://`
+    #[arg(long, default_value = "stdio")]
+    transport: String,
 }
 
 /// Arguments for `dapz mcp`.
@@ -204,15 +212,12 @@ async fn run_proxy(args: ProxyArgs) -> ExitCode {
 
     let backend_cmd = shared_config.blocking_read().backend_cmd.clone();
     let transport: Box<dyn Transport> =
-        match StdioTransport::spawn(&backend_cmd, &args.backend_args) {
-            Ok(t) => Box::new(t),
-            Err(e) => {
-                eprintln!("Failed to start backend server: {e}");
-                return ExitCode::FAILURE;
-            }
+        match create_transport(&args.transport, &backend_cmd, &args.backend_args).await {
+            Ok(t) => t,
+            Err(code) => return code,
         };
 
-    let interceptor_chain = build_interceptor_chain(&shared_config);
+    let interceptor_chain = build_interceptor_chain(&shared_config, args.metrics);
 
     let mut proxy = Proxy::new(shared_config, transport, interceptor_chain);
 
@@ -394,9 +399,12 @@ fn build_config(args: &ProxyArgs, output_format: OutputFormat) -> Result<Config,
         })
 }
 
-fn build_interceptor_chain(shared_config: &Arc<RwLock<Config>>) -> InterceptorChain {
+fn build_interceptor_chain(
+    shared_config: &Arc<RwLock<Config>>,
+    metrics_cli: bool,
+) -> InterceptorChain {
     let config = shared_config.blocking_read();
-    let metrics_on = metrics_enabled_from_env();
+    let metrics_on = metrics_cli || metrics_enabled_from_env();
     let wrap = |inner: Box<dyn Interceptor>| -> Box<dyn Interceptor> {
         if metrics_on {
             Box::new(MeteredInterceptor::new(inner).enable())
@@ -431,4 +439,66 @@ fn build_interceptor_chain(shared_config: &Arc<RwLock<Config>>) -> InterceptorCh
     );
 
     InterceptorChain::new(interceptors, shared_config.clone())
+}
+
+async fn create_transport(
+    scheme: &str,
+    backend_cmd: &str,
+    backend_args: &[String],
+) -> Result<Box<dyn Transport>, ExitCode> {
+    if scheme == "stdio" {
+        return StdioTransport::spawn(backend_cmd, backend_args)
+            .map(|t| Box::new(t) as Box<dyn Transport>)
+            .map_err(|e| {
+                eprintln!("Failed to start backend server: {e}");
+                ExitCode::FAILURE
+            });
+    }
+
+    if let Some(addr) = scheme.strip_prefix("tcp://") {
+        return TcpTransport::connect(addr)
+            .await
+            .map(|t| {
+                tracing::info!(addr = %addr, "Connected to TCP DAP adapter");
+                Box::new(t) as Box<dyn Transport>
+            })
+            .map_err(|e| {
+                eprintln!("Failed to connect to TCP adapter '{addr}': {e}");
+                ExitCode::FAILURE
+            });
+    }
+
+    if scheme.starts_with("ws://") || scheme.starts_with("wss://") {
+        return connect_websocket(scheme).await;
+    }
+
+    eprintln!(
+        "Unknown transport scheme '{scheme}'. Use 'stdio', 'tcp://host:port', or 'ws://url'."
+    );
+    Err(ExitCode::FAILURE)
+}
+
+async fn connect_websocket(scheme: &str) -> Result<Box<dyn Transport>, ExitCode> {
+    #[cfg(feature = "transport-websocket")]
+    {
+        use dapz::WsTransport;
+        WsTransport::connect(scheme)
+            .await
+            .map(|t| {
+                tracing::info!(url = %scheme, "Connected to WebSocket DAP adapter");
+                Box::new(t) as Box<dyn Transport>
+            })
+            .map_err(|e| {
+                eprintln!("Failed to connect to WebSocket adapter '{scheme}': {e}");
+                ExitCode::FAILURE
+            })
+    }
+    #[cfg(not(feature = "transport-websocket"))]
+    {
+        let _ = scheme;
+        eprintln!(
+            "WebSocket transport is not enabled. Build with `--features transport-websocket`."
+        );
+        Err(ExitCode::FAILURE)
+    }
 }
