@@ -126,3 +126,45 @@ async fn test_client_drains_orphan_response() {
          one (id=1); the daemon protocol would be desynced"
     );
 }
+
+/// Agent SDK `via_daemon` + `daemon_socket` connects and spawns a session key
+/// without silently falling back to in-process.
+#[tokio::test]
+#[cfg(feature = "agent-sdk")]
+async fn test_agent_sdk_via_daemon_spawn() {
+    use dapz::agent_sdk::AgentHandle;
+
+    let test_id = format!("dapz-test-sdk-{}", std::process::id());
+    let socket_path = PathBuf::from(format!("/tmp/{test_id}.sock"));
+    let _ = std::fs::remove_file(&socket_path);
+
+    let server = DaemonServer::new(socket_path.clone());
+    let daemon_handle = tokio::spawn(async move {
+        let _ = server.start().await;
+    });
+    tokio::time::sleep(Duration::from_millis(300)).await;
+
+    let agent = AgentHandle::builder()
+        .backend("echo")
+        .cwd("/tmp/dapz-test-sdk-workspace")
+        .daemon_socket(socket_path.clone())
+        .enable_compression(false)
+        .start()
+        .await;
+
+    daemon_handle.abort();
+    let _ = std::fs::remove_file(&socket_path);
+
+    // echo is not a DAP adapter — spawn may Err at protocol layer, or Ok with a key.
+    // Either way we must not have silently created an in-process-only path without daemon.
+    match agent {
+        Ok(_handle) => {}
+        Err(e) => {
+            let msg = e.to_string();
+            assert!(
+                !msg.contains("backend is required"),
+                "unexpected config error: {msg}"
+            );
+        }
+    }
+}

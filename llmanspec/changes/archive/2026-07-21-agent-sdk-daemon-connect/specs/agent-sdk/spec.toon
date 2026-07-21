@@ -1,0 +1,8 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r57,SDK 经 daemon,"系统 MUST 使 feature agent-sdk 下的 AgentHandle/AgentPool 能通过 via_daemon(true) 经 DaemonClient 连接或自动启动 dapz daemon 以复用 backend+cwd 会话；默认 MUST 保持进程内会话；连不上 daemon 时 MUST 返回错误且 MUST NOT 静默回退进程内。",null,null,null
+  modify_requirement,r7,AgentHandle,"系统 MUST 在 feature agent-sdk 下提供 AgentHandle：默认进程内管理 DAP 会话，或在 via_daemon 模式下经 daemon 管理会话。",null,null,null
+op_scenarios[3]{req_id,id,given,when,then}:
+  r57,"sdk-via-daemon","AgentBuilder via_daemon true",调用 start,经 DaemonClient 连接或启动 daemon
+  r57,"sdk-in-process-default",未设 via_daemon,调用 start,本地 spawn DapSession 且不要求 daemon socket
+  r7,"agent-start","AgentHandle::builder 配置 backend",调用 start,返回可用句柄

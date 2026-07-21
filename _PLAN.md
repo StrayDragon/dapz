@@ -288,7 +288,7 @@ main()
 | Proxy 默认 toon | 现默认 json（IDE 友好） | 产品决策 |
 | `config_watcher` | notify 未接线 | **跳过**（除非热调 capping） |
 | `init` / uri / MCP Roots | LSP 工作区模型 | **跳过** |
-| Agent SDK → daemon | 仍进程内 session | 可后续 |
+| Agent SDK → daemon | 仍进程内 session | ✅ opt-in `via_daemon`（DAP 按需默认本地） |
 | lldb e2e | 仅发现，无 harness | 可选 job |
 
 **不做（除非新决策）**：workspace roots / uri / init / config_watcher。

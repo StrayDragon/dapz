@@ -96,13 +96,25 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 
 ## Agent SDK
 
+默认**进程内** spawn adapter（DAP 按需短会话）。若要与 `dapz mcp` / `dapz daemon` **共享会话**，opt-in：
+
 ```rust
 use dapz::agent_sdk::AgentHandle;
 
+// 默认：in-process
 let mut agent = AgentHandle::builder()
     .backend("python3 -m debugpy.adapter")
     .start()
     .await?;
+
+// 与 MCP 复用同一 daemon（连不上则报错，不静默回退）
+let mut shared = AgentHandle::builder()
+    .backend("python3 -m debugpy.adapter")
+    .cwd("/path/to/project")
+    .via_daemon(true)
+    .start()
+    .await?;
+
 let stopped = agent
     .launch("script.py", None, None, Some(&[("script.py".into(), vec![10])]))
     .await?;
