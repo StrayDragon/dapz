@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Init**: `dapz init`（`--global` / `--show` / `--uninstall` / `--dry-run` / `--force` / `--no-patch`）对齐 lspz：注册 `mcpServers.dapz`、写入 `DAPZ.md`、注入 `@DAPZ.md`
+
 ## v0.3.1 (2026-07-21)
 
 Ops maturity + protocol / output-format alignment with lspz (docs refreshed).
@@ -16,7 +20,7 @@ Ops maturity + protocol / output-format alignment with lspz (docs refreshed).
 - **Transport**: 删除未使用的 WebSocket stub / feature
 - **Docs**: README 产品化；ROADMAP / CHANGELOG 对齐 0.3.1；`docs/specs/002-dap-compatibility.md`
 - **Tooling**: `just qa` 含 prek（若已安装）；CI docs + doctests
-- **Note**: 无 `dapz init`（Claude MCP 注入）——与 `_PLAN` 一致，需手写 MCP 配置
+- **Note**: `dapz init` 见 Unreleased（Claude MCP 注入，对齐 lspz）
 
 ## v0.3.0 (2026-07-20)
 

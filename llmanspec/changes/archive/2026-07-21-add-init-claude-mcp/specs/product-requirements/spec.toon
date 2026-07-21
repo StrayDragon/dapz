@@ -1,0 +1,7 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r67,Claude Code init,"系统 MUST 提供 dapz init（含 --global）以注册 MCP server、写入 DAPZ.md，并在 CLAUDE.md 注入 @DAPZ.md；MUST 支持 --show / --uninstall / --dry-run / --force / --no-patch；当二进制未启用 mcp feature 时 MUST 失败并提示重建。",null,null,null
+op_scenarios[3]{req_id,id,given,when,then}:
+  r67,"init-global-mcp",DAPZ_CLAUDE_DIR 指向临时目录且 mcp feature 开启,dapz init --global,创建 mcpServers.dapz 与 DAPZ.md 且 CLAUDE.md 含 @DAPZ.md
+  r67,"init-show",已注册 MCP,dapz init --show,打印 Binary/MCP/DAPZ.md/CLAUDE.md 状态
+  r67,"init-no-mcp-feature",二进制无 mcp feature,dapz init,以非零退出并提示 --features mcp

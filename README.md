@@ -62,18 +62,14 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 
 工具：`debug_launch` / `debug_attach` → `get_stack` / `get_scopes` / `get_variables` / `evaluate` / `get_exception` → `step_*` / `continue` → `disconnect`（21 tools）。
 
-> **无 `dapz init`**：不像 lspz 的 `lspz init --global`，当前**不会**自动改 `~/.claude.json` / 项目 MCP 配置。请在客户端手写 MCP server，例如 Claude Code：
->
-> ```json
-> {
->   "mcpServers": {
->     "dapz": {
->       "command": "dapz",
->       "args": ["mcp"]
->     }
->   }
-> }
-> ```
+Claude Code 一键注入（对齐 lspz）：
+
+```bash
+cargo install dapz --features mcp
+dapz init --global          # ~/.claude.json + ~/.claude/DAPZ.md + @DAPZ.md
+dapz init --global --show
+dapz init --global --uninstall
+```
 
 ## 压缩效果
 

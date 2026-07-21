@@ -86,6 +86,38 @@ pub fn lookup_by_extension(ext: &str) -> Option<AdapterInfo> {
     }
 }
 
+/// Markdown table of known DAP adapters (for `DAPZ.md` awareness).
+pub fn generate_adapter_table() -> String {
+    let rows = [
+        (
+            "`.py`",
+            "python",
+            "debugpy",
+            resolve_python_debug_adapter().is_some(),
+        ),
+        (
+            "`.c` / `.cpp` / `.rs`",
+            "c/cpp/rust",
+            "lldb-dap",
+            resolve_lldb_debug_adapter().is_some(),
+        ),
+    ];
+    let mut out = vec![
+        "| Extensions | Language | Backend | Status |".to_string(),
+        "|---|---|---|---|".to_string(),
+    ];
+    for (exts, lang, backend, ok) in rows {
+        out.push(format!(
+            "| {} | `{}` | `{}` | {} |",
+            exts,
+            lang,
+            backend,
+            if ok { "ok" } else { "not installed" }
+        ));
+    }
+    out.join("\n")
+}
+
 /// Look up adapter by language id, e.g. `"python"`.
 pub fn lookup_by_language(language: &str) -> Option<AdapterInfo> {
     match language.to_ascii_lowercase().as_str() {
