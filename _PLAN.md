@@ -289,7 +289,7 @@ main()
 | `init` / uri / MCP Roots | LSP 工作区模型 | **跳过** |
 | Agent SDK → daemon | ✅ opt-in `via_daemon` | 完成 |
 | lldb e2e | 仅发现，无 harness | 可选 job |
-| WsTransport 真实现 | feature 有、连接仍 stub | 可选（DAP 少用 ws） |
+| WsTransport | ✅ 已移除 stub + feature（DAP 不用） | 完成 |
 
 **不做（除非新决策）**：workspace roots / uri / init / config_watcher。
 

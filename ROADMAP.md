@@ -50,8 +50,8 @@
 | 传输 | Feature Flag | 说明 |
 |------|-------------|------|
 | `StdioTransport` | always | 子进程 stdio（默认） |
-| `TcpTransport` | `transport-tcp` | TCP socket 连接 |
-| `WsTransport` | `transport-websocket` | WebSocket 连接 |
+| `TcpTransport` | always | TCP socket 连接 |
+
 
 ## 版本历史
 

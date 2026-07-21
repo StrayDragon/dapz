@@ -8,17 +8,12 @@
 //! |-----------|----------|-------------|--------|
 //! | `StdioTransport` | Child process stdio | always | ✅ |
 //! | `TcpTransport` | TCP socket | always | ✅ |
-//! | `WsTransport` | WebSocket | `transport-websocket` | ✅ |
 //! | `MockTransport` | In-memory FIFO | always (testing) | ✅ |
 
 pub(crate) mod framing;
 pub mod mock;
 pub mod stdio;
 pub mod tcp;
-
-/// This module is only available with the `transport-websocket` feature.
-#[cfg(feature = "transport-websocket")]
-pub mod websocket;
 
 use std::process::ExitStatus;
 

@@ -14,5 +14,5 @@ scenarios[6]{req_id,id,given,when,then,feature}:
   r20,"server-to-client-only",Client→Server 请求与 Server→Client 响应,经 Proxy,仅后者进入拦截链,false
   r28,"help-subcommands","运行 dapz --help",查看子命令,列出 proxy 与 mcp,true
   r35,"output-formats",Config.output_format 分别为 json/toon/passthrough,转发响应,按格式编码或不改写,false
-  r60,"proxy-output-json-override","传 --output json",启动 proxy 配置,使用 JSON 输出,true
+  r60,"proxy-no-ws-help","运行 dapz proxy --help","查看 --transport 说明","不承诺 ws:// 支持",true
   r61,"proxy-default-toon","未传 --output",解析 ProxyArgs / Config 缺省,output_format 为 toon,true

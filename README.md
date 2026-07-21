@@ -87,7 +87,7 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 | `json` | 标准 JSON | IDE：`dapz proxy --output json` |
 | `passthrough` | 原始 DAP JSON 不动 | 调试 |
 
-Proxy 额外旋钮：`--metrics`（或 `DAPZ_METRICS`）、`--transport stdio|tcp://host:port|ws://…`（默认 stdio；ws 需 `transport-websocket`，实现仍为 stub）。
+Proxy 额外旋钮：`--metrics`（或 `DAPZ_METRICS`）、`--transport stdio|tcp://host:port`（默认 stdio）。
 
 ## Feature flags
 
@@ -96,8 +96,7 @@ Proxy 额外旋钮：`--metrics`（或 `DAPZ_METRICS`）、`--transport stdio|tc
 | `cli` | `dapz` 二进制（clap、tracing-subscriber） | 开 |
 | `mcp` | MCP + daemon（rmcp） | 关 |
 | `agent-sdk` | AgentHandle + AgentPool（隐含 `mcp`） | 关 |
-| `transport-tcp` | TcpTransport | 关（代码始终包含） |
-| `transport-websocket` | WsTransport | 关 |
+| `transport-tcp` | TcpTransport（代码始终包含；flag 兼容） | 关 |
 
 ## Agent SDK
 

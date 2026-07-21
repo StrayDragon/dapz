@@ -9,8 +9,7 @@
 //! | `cli` | CLI binary (clap, tracing-subscriber) | yes |
 //! | `mcp` | MCP server (rmcp) | no |
 //! | `agent-sdk` | Agent SDK API | no |
-//! | `transport-tcp` | TCP transport | no |
-//! | `transport-websocket` | WebSocket transport | no |
+//! | `transport-tcp` | TCP transport | no (code always included) |
 
 pub mod adapters;
 pub mod codec;
@@ -51,7 +50,3 @@ pub use proxy::{Direction, Proxy, State};
 pub use transport::Transport;
 pub use transport::stdio::StdioTransport;
 pub use transport::tcp::TcpTransport;
-
-/// WebSocket transport (requires `transport-websocket` feature).
-#[cfg(feature = "transport-websocket")]
-pub use transport::websocket::WsTransport;

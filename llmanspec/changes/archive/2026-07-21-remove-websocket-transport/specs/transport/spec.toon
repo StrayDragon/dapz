@@ -1,0 +1,7 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r62,无 WebSocket 传输,"系统 MUST NOT 提供 WsTransport 或 transport-websocket feature；dapz proxy --transport MUST 仅接受 stdio 与 tcp://。",null,null,null
+  modify_requirement,r30,多协议支持,"系统 MUST 支持 StdioTransport 与 TcpTransport；dapz proxy --transport MUST 能选择 stdio（默认）或 tcp://host:port，且 MUST NOT 声称支持 WebSocket。",null,null,null
+op_scenarios[2]{req_id,id,given,when,then}:
+  r62,"reject-ws",--transport ws://example,启动 proxy,报错且提示仅 stdio/tcp
+  r30,"cli-transport-tcp",--transport tcp://127.0.0.1:1234,启动 proxy,使用 TcpTransport
