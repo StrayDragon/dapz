@@ -139,8 +139,9 @@ impl DapSession {
             "program": program,
             "noDebug": false,
             "stopOnEntry": breakpoints.is_none(),
-            "console": "internalConsole",
         });
+        // debugpy-friendly; other adapters typically ignore unknown fields.
+        launch_args["console"] = json!("internalConsole");
         if let Some(cwd) = cwd {
             launch_args["cwd"] = json!(cwd);
         }

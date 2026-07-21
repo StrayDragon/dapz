@@ -1,0 +1,6 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r63,lldb e2e harness,"系统 MUST 提供可选的 lldb-dap e2e（ignored 测试 + harness）：在发现 lldb-dap/lldb-vscode 时可编译 C fixture 并完成 launch→stack→disconnect；缺失适配器时 MUST SKIP 且 MUST NOT 使 debugpy 门禁失败（除非 DAPZ_REQUIRE_LLDB_E2E=1）。",null,null,null
+op_scenarios[2]{req_id,id,given,when,then}:
+  r63,"lldb-e2e-run",本机有 lldb-dap 与 cc,运行 harness lldb 段,ignored 测试通过
+  r63,"lldb-e2e-skip",无 lldb 适配器,运行 harness,打印 SKIP 且退出码仍成功

@@ -62,3 +62,7 @@ required-features = ["agent-sdk"]
 [[test]]
 name = "daemon_integration"
 required-features = ["mcp"]
+
+[[test]]
+name = "lldb_integration"
+required-features = ["agent-sdk"]
