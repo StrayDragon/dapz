@@ -149,8 +149,8 @@ struct ProxyArgs {
     #[arg(long, env = "DAPZ_MAX_VALUE_LENGTH", default_value_t = 120)]
     max_value_length: usize,
 
-    /// Output format: json (default, IDE-friendly), toon, or passthrough
-    #[arg(short, long, env = "DAPZ_OUTPUT_FORMAT", default_value = "json")]
+    /// Output format: toon (default), json, or passthrough
+    #[arg(short, long, env = "DAPZ_OUTPUT_FORMAT", default_value = "toon")]
     output: String,
 
     /// Enable runtime metrics on the interceptor chain (`DAPZ_METRICS` also works)

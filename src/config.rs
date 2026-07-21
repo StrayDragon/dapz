@@ -13,9 +13,9 @@ use crate::error::DapzError;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OutputFormat {
-    /// Standard JSON (default for proxy).
+    /// Standard JSON (opt-in via `--output json` for IDE pipelines).
     Json,
-    /// TOON — token-efficient line protocol for LLM consumption (default for MCP/SDK).
+    /// TOON — token-efficient line protocol (default for proxy, MCP, and SDK).
     Toon,
     /// Passthrough — no transformation in output.
     Passthrough,
@@ -114,7 +114,7 @@ fn default_true() -> bool {
 }
 
 fn default_output_format() -> OutputFormat {
-    OutputFormat::Json
+    OutputFormat::Toon
 }
 
 fn default_log_level() -> String {
@@ -131,7 +131,7 @@ impl Default for Config {
             enable_stacktrace_compress: true,
             enable_evaluate_compress: true,
             enable_scopes_compress: true,
-            output_format: OutputFormat::Json,
+            output_format: OutputFormat::Toon,
             log_level: "info".into(),
         }
     }
@@ -297,7 +297,7 @@ impl ConfigBuilder {
                     .ok()
                     .and_then(|v| OutputFormat::from_str(&v).ok())
             })
-            .unwrap_or(OutputFormat::Json);
+            .unwrap_or(OutputFormat::Toon);
 
         // Read capping from env vars
         let capping = self.capping.unwrap_or_else(|| CappingConfig {
