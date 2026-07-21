@@ -11,9 +11,9 @@ setup:
 fmt:
     cargo fmt
 
-# Run cargo clippy with strict lints.
+# Run cargo clippy with strict lints (match CI: all features + all targets).
 lint:
-    cargo clippy --all-features -- -D warnings
+    cargo clippy --all-features --all-targets -- -D warnings
 
 # Run cargo test.
 test:

@@ -2,6 +2,12 @@
 //!
 //! Provides helpers for DAP transport (Content-Length framing), handshake
 //! sequences, and response verification.
+//!
+//! Each `[[test]]` binary that `mod common` compiles this module independently;
+//! not every binary uses every helper (e.g. `agent_debug_loop` only needs
+//! [`create_test_script`]). Allow unused items so `--all-targets` clippy stays clean.
+
+#![allow(dead_code)]
 
 use std::io::{BufRead, Read, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
