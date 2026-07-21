@@ -167,7 +167,7 @@ fn build_full_report(
     );
     out.push_str("# dapz 压缩基准测试报告\n\n");
     out.push_str(&format!("**版本**: v{}\n\n", VERSION));
-    out.push_str(&format!("**日期**: {}  \n\n", get_today()));
+    out.push_str(&format!("**日期**: {}\n\n", get_today()));
     out.push_str(
         "测量标准：原始/紧凑 = 整条 DAP JSON（`cl100k_base`）；TOON = 压缩后 `body` 经 `value_to_toon`（对齐 MCP/SDK 出口）。\n\n",
     );
