@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r58,TOON 基准列,"系统 MUST 在 bench-report 示例中同时报告压缩 JSON 相对原始与 TOON 相对原始的 token 节省（cl100k_base），以便与 README 压缩效果表对齐。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r58,"bench-toon-column",fixtures/bench 用例,运行 examples/bench-report,输出含紧凑与 TOON 两列节省

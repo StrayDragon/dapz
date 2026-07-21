@@ -1,9 +1,9 @@
 //! dapz Compression Benchmark Report
 //!
 //! Loads JSON fixture files from `fixtures/bench/`, runs all interceptors,
-//! and outputs a Markdown report to stdout measuring token savings.
+//! and outputs a Markdown report measuring compact JSON and TOON token savings.
 //!
-//! Run: just gen-bench
+//! Run: just gen-bench / just bench-report
 
 use std::path::Path;
 
@@ -11,10 +11,13 @@ use serde_json::Value;
 use tiktoken_rs::cl100k_base;
 
 use dapz::codec::json_rpc::DapMessage;
+use dapz::codec::toon::value_to_toon;
 use dapz::interceptors::Interceptor;
 use dapz::interceptors::capping::CappingInterceptor;
 use dapz::interceptors::evaluate::EvaluateCompressor;
+use dapz::interceptors::exception::ExceptionInfoCompressor;
 use dapz::interceptors::output::OutputCompressor;
+use dapz::interceptors::scopes::ScopesCompressor;
 use dapz::interceptors::stacktrace::StackTraceCompressor;
 use dapz::interceptors::variables::VariablesCompressor;
 use dapz::proxy::Direction;
@@ -67,6 +70,8 @@ fn make_interceptor(name: &str) -> Option<Box<dyn Interceptor>> {
         "evaluate_compressor" => Some(Box::new(EvaluateCompressor::new(500))),
         "variables_compressor" => Some(Box::new(VariablesCompressor::new(120))),
         "stacktrace_compressor" => Some(Box::new(StackTraceCompressor)),
+        "scopes_compressor" => Some(Box::new(ScopesCompressor)),
+        "exception_info_compressor" => Some(Box::new(ExceptionInfoCompressor::new(800))),
         "capping_interceptor" => Some(Box::new(CappingInterceptor::new(5, 5, 500))),
         _ => None,
     }
@@ -75,6 +80,7 @@ fn make_interceptor(name: &str) -> Option<Box<dyn Interceptor>> {
 struct BenchResult {
     orig_tokens: usize,
     comp_tokens: usize,
+    toon_tokens: usize,
 }
 
 async fn bench_case(bpe: &tiktoken_rs::CoreBPE, case: &FixtureCase) -> Option<BenchResult> {
@@ -93,9 +99,20 @@ async fn bench_case(bpe: &tiktoken_rs::CoreBPE, case: &FixtureCase) -> Option<Be
     let comp_json = serde_json::to_string(&result).unwrap();
     let comp_tokens = bpe.encode_with_special_tokens(&comp_json).len();
 
+    // MCP/SDK path: TOON from response body (or whole message if no body).
+    let toon_value = result
+        .body
+        .clone()
+        .unwrap_or_else(|| serde_json::to_value(&result).unwrap_or(Value::Null));
+    let toon_tokens = match value_to_toon(&toon_value) {
+        Ok(text) => bpe.encode_with_special_tokens(&text).len(),
+        Err(_) => comp_tokens,
+    };
+
     Some(BenchResult {
         orig_tokens,
         comp_tokens,
+        toon_tokens,
     })
 }
 
@@ -112,6 +129,8 @@ const COMPRESSOR_CN: &[(&str, &str)] = &[
     ("evaluate.json", "EvaluateCompressor"),
     ("variables.json", "VariablesCompressor"),
     ("stacktrace.json", "StackTraceCompressor"),
+    ("scopes.json", "ScopesCompressor"),
+    ("exception.json", "ExceptionInfoCompressor"),
     ("capping.json", "CappingInterceptor"),
 ];
 
@@ -127,9 +146,11 @@ async fn main() {
     println!("# dapz 压缩基准测试报告\n");
     println!("**版本**: v{}\n", VERSION);
     println!("**日期**: {}  \n", get_today());
-    println!("测量标准：将每条 DAP 消息序列化为 JSON，使用 `cl100k_base` tokenizer 计数。\n");
-    println!("| 压缩器 | 场景 | 原始 (T) | 压缩 (T) | 节省 Δ% |");
-    println!("|----------|------|----------|----------|--------|");
+    println!(
+        "测量标准：原始/紧凑 = 整条 DAP JSON（`cl100k_base`）；TOON = 压缩后 `body` 经 `value_to_toon`（对齐 MCP/SDK 出口）。\n"
+    );
+    println!("| 压缩器 | 场景 | 原始 (T) | 紧凑 (T) | TOON (T) | Δ% 紧凑 | Δ% TOON |");
+    println!("|----------|------|----------|----------|----------|---------|---------|");
 
     let mut all_results: Vec<(String, Vec<BenchResult>)> = Vec::new();
 
@@ -143,17 +164,19 @@ async fn main() {
             match bench_case(&bpe, case).await {
                 Some(result) => {
                     println!(
-                        "| {} | {} | {} | {} | {:.1}% |",
+                        "| {} | {} | {} | {} | {} | {:.1}% | {:.1}% |",
                         eng_name,
                         case.name,
                         result.orig_tokens,
                         result.comp_tokens,
+                        result.toon_tokens,
                         pct(result.orig_tokens, result.comp_tokens),
+                        pct(result.orig_tokens, result.toon_tokens),
                     );
                     results.push(result);
                 }
                 None => {
-                    println!("| {} | {} | — | — | — |", eng_name, case.name);
+                    println!("| {} | {} | — | — | — | — | — |", eng_name, case.name);
                 }
             }
         }
@@ -163,39 +186,43 @@ async fn main() {
         }
     }
 
-    // Summary
     println!();
     println!("## 总结\n");
-    println!("| 压缩器 | 场景数 | 原始 (T) | 压缩 (T) | 平均节省 Δ% |");
-    println!("|----------|--------|----------|----------|-------------|");
+    println!("| 压缩器 | 场景数 | 原始 (T) | 紧凑 (T) | TOON (T) | Δ% 紧凑 | Δ% TOON |");
+    println!("|----------|--------|----------|----------|----------|---------|---------|");
 
     let mut grand_orig: usize = 0;
     let mut grand_comp: usize = 0;
+    let mut grand_toon: usize = 0;
 
     for (name, results) in &all_results {
         let total_orig: usize = results.iter().map(|r| r.orig_tokens).sum();
         let total_comp: usize = results.iter().map(|r| r.comp_tokens).sum();
-        let avg_pct = pct(total_orig, total_comp);
+        let total_toon: usize = results.iter().map(|r| r.toon_tokens).sum();
         grand_orig += total_orig;
         grand_comp += total_comp;
+        grand_toon += total_toon;
         println!(
-            "| {} | {} | {} | {} | {:.1}% |",
+            "| {} | {} | {} | {} | {} | {:.1}% | {:.1}% |",
             name,
             results.len(),
             total_orig,
             total_comp,
-            avg_pct,
+            total_toon,
+            pct(total_orig, total_comp),
+            pct(total_orig, total_toon),
         );
     }
 
     if !all_results.is_empty() {
-        let overall_pct = pct(grand_orig, grand_comp);
         println!(
-            "| **总体** | **{}** | **{}** | **{}** | **{:.1}%** |",
+            "| **总体** | **{}** | **{}** | **{}** | **{}** | **{:.1}%** | **{:.1}%** |",
             all_results.iter().map(|(_, r)| r.len()).sum::<usize>(),
             grand_orig,
             grand_comp,
-            overall_pct,
+            grand_toon,
+            pct(grand_orig, grand_comp),
+            pct(grand_orig, grand_toon),
         );
     }
     println!();
