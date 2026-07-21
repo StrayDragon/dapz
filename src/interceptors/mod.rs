@@ -6,6 +6,11 @@
 //! - **Events** (e.g., `output`, `stopped`, `breakpoint`)
 //! - **Responses** (e.g., `variables`, `stackTrace`, `scopes`)
 //!
+//! ## Compression contract
+//!
+//! Field-deletion / rewrite policy is versioned as [`DAPZ_COMPRESS_CONTRACT`].
+//! Bump the identifier when changing which optional DAP fields Agents see.
+//!
 //! ## Architecture
 //!
 //! [MermaidChart:../docs/mmd/interceptor-chain.mmd]
@@ -27,6 +32,9 @@ use crate::codec::json_rpc::DapMessage;
 use crate::config::Config;
 use crate::error::DapzError;
 use crate::proxy::Direction;
+
+/// Compression contract id — bump when changing deleted/rewritten field sets.
+pub const DAPZ_COMPRESS_CONTRACT: &str = "dapz-compress/1";
 
 /// A single interceptor in the chain.
 ///

@@ -38,6 +38,7 @@ pub use adapters::{
 pub use codec::toon::value_to_toon;
 pub use config::{CappingConfig, Config, OutputFormat};
 pub use error::DapzError;
+pub use interceptors::DAPZ_COMPRESS_CONTRACT;
 pub use interceptors::capping::CappingInterceptor;
 pub use interceptors::evaluate::EvaluateCompressor;
 pub use interceptors::exception::ExceptionInfoCompressor;

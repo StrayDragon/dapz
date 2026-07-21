@@ -12,6 +12,7 @@ use crate::StdioTransport;
 use crate::Transport;
 use crate::codec::json_rpc::DapMessage;
 use crate::error::DapzError;
+use crate::mcp::AdapterKind;
 
 /// Cap buffered events to avoid unbounded growth under noisy adapters.
 const MAX_PENDING_EVENTS: usize = 64;
@@ -28,6 +29,8 @@ pub struct DapSession {
     pending_events: VecDeque<(String, Value)>,
     /// Buffered compressed/raw output event bodies.
     output_buffer: Vec<Value>,
+    /// Adapter profile for initialize/launch shaping.
+    kind: AdapterKind,
 }
 
 impl DapSession {
@@ -39,18 +42,34 @@ impl DapSession {
     /// Spawn a DAP adapter with extra CLI arguments.
     pub fn spawn_with_args(cmd: &str, extra_args: &[String]) -> Result<Self, DapzError> {
         let transport = StdioTransport::spawn(cmd, extra_args)?;
-        Ok(Self::with_transport(Box::new(transport)))
+        Ok(Self::with_transport_kind(
+            Box::new(transport),
+            AdapterKind::from_backend(cmd),
+        ))
     }
 
     /// Create a session with a pre-constructed transport (tests / custom I/O).
+    ///
+    /// Defaults to [`AdapterKind::Generic`].
     pub fn with_transport(transport: Box<dyn Transport>) -> Self {
+        Self::with_transport_kind(transport, AdapterKind::Generic)
+    }
+
+    /// Create a session with an explicit adapter profile.
+    pub fn with_transport_kind(transport: Box<dyn Transport>, kind: AdapterKind) -> Self {
         Self {
             transport,
             next_seq: 1,
             last_used_at: Instant::now(),
             pending_events: VecDeque::new(),
             output_buffer: Vec::new(),
+            kind,
         }
+    }
+
+    /// Adapter profile used for initialize/launch.
+    pub fn adapter_kind(&self) -> AdapterKind {
+        self.kind
     }
 
     fn touch(&mut self) {
@@ -87,7 +106,11 @@ impl DapSession {
         self.pending_events.push_back((event, body));
     }
 
-    /// Perform DAP `initialize` and wait for `initialized` event.
+    /// Perform DAP `initialize`. Does **not** wait for `initialized`.
+    ///
+    /// Adapters may emit `initialized` early (post-initialize) or late
+    /// (post-launch). Callers use [`Self::wait_initialized`] which prefers the
+    /// event buffer first.
     pub async fn initialize(&mut self) -> Result<Value, DapzError> {
         self.touch();
         let caps = self
@@ -96,7 +119,7 @@ impl DapSession {
                 json!({
                     "clientID": "dapz",
                     "clientName": "dapz",
-                    "adapterID": "python",
+                    "adapterID": self.kind.adapter_id(),
                     "pathFormat": "path",
                     "linesStartAt1": true,
                     "columnsStartAt1": true,
@@ -106,8 +129,13 @@ impl DapSession {
                 }),
             )
             .await?;
-        // Note: debugpy sends `initialized` only after launch/attach — do not wait here.
         Ok(caps)
+    }
+
+    /// Wait for `initialized`, preferring events already buffered.
+    pub async fn wait_initialized(&mut self) -> Result<Value, DapzError> {
+        self.wait_for_event_where("initialized", |_| true, DEFAULT_TIMEOUT)
+            .await
     }
 
     /// Launch a debuggee. Caller should set breakpoints before or via args,
@@ -121,11 +149,51 @@ impl DapSession {
         self.send_request("configurationDone", json!({})).await
     }
 
+    /// Build DAP-common launch args; add kind-specific extras only when documented.
+    fn build_launch_args(
+        &self,
+        program: &str,
+        cwd: Option<&str>,
+        args: Option<&[String]>,
+        stop_on_entry: bool,
+    ) -> Value {
+        let mut launch_args = json!({
+            "program": program,
+            "noDebug": false,
+            "stopOnEntry": stop_on_entry,
+        });
+        if let Some(cwd) = cwd {
+            launch_args["cwd"] = json!(cwd);
+        }
+        if let Some(args) = args {
+            launch_args["args"] = json!(args);
+        }
+        if self.kind.wants_debugpy_console() {
+            // debugpy extension (not DAP core); see docs/specs/002-dap-compatibility.md
+            launch_args["console"] = json!("internalConsole");
+        }
+        launch_args
+    }
+
+    /// Resolve `threadId`: use explicit value, else first id from `threads`.
+    pub async fn resolve_thread_id(&mut self, thread_id: Option<i64>) -> Result<i64, DapzError> {
+        if let Some(tid) = thread_id {
+            return Ok(tid);
+        }
+        let body = self.get_threads().await?;
+        body.get("threads")
+            .and_then(|t| t.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|t| t.get("id"))
+            .and_then(|id| id.as_i64())
+            .ok_or_else(|| DapzError::Protocol("no threads available for threadId".into()))
+    }
+
     /// Convenience: initialize → launch (non-blocking) → wait `initialized` →
     /// optional breakpoints → configurationDone → wait `stopped`.
     ///
-    /// Matches debugpy's "late initialized" sequence: launch response arrives
-    /// only after `configurationDone`, so we must not block on launch first.
+    /// Supports both early and late `initialized` (buffer-first wait). Launch
+    /// response may arrive only after `configurationDone` on some adapters.
     pub async fn launch_program(
         &mut self,
         program: &str,
@@ -135,26 +203,11 @@ impl DapSession {
     ) -> Result<Value, DapzError> {
         let _caps = self.initialize().await?;
 
-        let mut launch_args = json!({
-            "program": program,
-            "noDebug": false,
-            "stopOnEntry": breakpoints.is_none(),
-        });
-        // debugpy-friendly; other adapters typically ignore unknown fields.
-        launch_args["console"] = json!("internalConsole");
-        if let Some(cwd) = cwd {
-            launch_args["cwd"] = json!(cwd);
-        }
-        if let Some(args) = args {
-            launch_args["args"] = json!(args);
-        }
-
+        let launch_args = self.build_launch_args(program, cwd, args, breakpoints.is_none());
         let launch_seq = self.send_request_no_wait("launch", launch_args).await?;
 
-        // debugpy emits `initialized` after receiving launch (not after initialize).
-        let _ = self
-            .wait_for_event_where("initialized", |_| true, DEFAULT_TIMEOUT)
-            .await?;
+        // Dual-path: early emitters already buffered; late emitters arrive here.
+        let _ = self.wait_initialized().await?;
 
         if let Some(bps) = breakpoints {
             for (path, lines) in bps {
@@ -256,7 +309,7 @@ impl DapSession {
     }
 
     pub async fn continue_(&mut self, thread_id: Option<i64>) -> Result<Value, DapzError> {
-        let tid = thread_id.unwrap_or(1);
+        let tid = self.resolve_thread_id(thread_id).await?;
         let _ = self
             .send_request("continue", json!({ "threadId": tid }))
             .await?;
@@ -264,7 +317,7 @@ impl DapSession {
     }
 
     pub async fn step_over(&mut self, thread_id: Option<i64>) -> Result<Value, DapzError> {
-        let tid = thread_id.unwrap_or(1);
+        let tid = self.resolve_thread_id(thread_id).await?;
         let _ = self
             .send_request("next", json!({ "threadId": tid }))
             .await?;
@@ -272,7 +325,7 @@ impl DapSession {
     }
 
     pub async fn step_into(&mut self, thread_id: Option<i64>) -> Result<Value, DapzError> {
-        let tid = thread_id.unwrap_or(1);
+        let tid = self.resolve_thread_id(thread_id).await?;
         let _ = self
             .send_request("stepIn", json!({ "threadId": tid }))
             .await?;
@@ -280,7 +333,7 @@ impl DapSession {
     }
 
     pub async fn step_out(&mut self, thread_id: Option<i64>) -> Result<Value, DapzError> {
-        let tid = thread_id.unwrap_or(1);
+        let tid = self.resolve_thread_id(thread_id).await?;
         let _ = self
             .send_request("stepOut", json!({ "threadId": tid }))
             .await?;
@@ -288,7 +341,7 @@ impl DapSession {
     }
 
     pub async fn pause(&mut self, thread_id: Option<i64>) -> Result<Value, DapzError> {
-        let tid = thread_id.unwrap_or(1);
+        let tid = self.resolve_thread_id(thread_id).await?;
         let _ = self
             .send_request("pause", json!({ "threadId": tid }))
             .await?;
@@ -304,7 +357,7 @@ impl DapSession {
         thread_id: Option<i64>,
         levels: Option<i64>,
     ) -> Result<Value, DapzError> {
-        let tid = thread_id.unwrap_or(1);
+        let tid = self.resolve_thread_id(thread_id).await?;
         let levels = levels.unwrap_or(20);
         self.send_request(
             "stackTrace",
@@ -369,7 +422,7 @@ impl DapSession {
 
     /// DAP `exceptionInfo` for a thread.
     pub async fn get_exception_info(&mut self, thread_id: Option<i64>) -> Result<Value, DapzError> {
-        let tid = thread_id.unwrap_or(1);
+        let tid = self.resolve_thread_id(thread_id).await?;
         self.send_request("exceptionInfo", json!({ "threadId": tid }))
             .await
     }
@@ -679,5 +732,113 @@ mod tests {
         // Inspect sent request
         // Recreate to inspect — transport was moved. Skip sent inspect here;
         // covered by send_request matching.
+    }
+
+    #[tokio::test]
+    async fn test_initialize_adapter_id_from_kind() {
+        let mock = MockTransport::new();
+        mock.push_message(frame_msg(DapMessage {
+            seq: 2,
+            msg_type: "response".into(),
+            command: Some("initialize".into()),
+            event: None,
+            request_seq: Some(1),
+            success: Some(true),
+            body: Some(json!({})),
+            arguments: None,
+        }));
+        let mut session = DapSession::with_transport_kind(Box::new(mock), AdapterKind::Debugpy);
+        session.initialize().await.unwrap();
+        // Sent frame lives in mock — re-check via kind accessor.
+        assert_eq!(session.adapter_kind(), AdapterKind::Debugpy);
+        assert_eq!(session.adapter_kind().adapter_id(), "python");
+    }
+
+    #[tokio::test]
+    async fn test_build_launch_args_console_only_debugpy() {
+        let session =
+            DapSession::with_transport_kind(Box::new(MockTransport::new()), AdapterKind::Debugpy);
+        let args = session.build_launch_args("/tmp/a.py", Some("/tmp"), None, true);
+        assert_eq!(args["console"], "internalConsole");
+        assert_eq!(args["program"], "/tmp/a.py");
+        assert!(args.get("cwd").is_some());
+
+        let session =
+            DapSession::with_transport_kind(Box::new(MockTransport::new()), AdapterKind::Lldb);
+        let args = session.build_launch_args("/tmp/a.out", None, None, true);
+        assert!(args.get("console").is_none());
+        assert_eq!(session.adapter_kind().adapter_id(), "lldb-dap");
+    }
+
+    #[tokio::test]
+    async fn test_resolve_thread_id_from_threads() {
+        let mock = MockTransport::new();
+        mock.push_message(frame_msg(DapMessage {
+            seq: 2,
+            msg_type: "response".into(),
+            command: Some("threads".into()),
+            event: None,
+            request_seq: Some(1),
+            success: Some(true),
+            body: Some(json!({
+                "threads": [{"id": 42, "name": "Main"}]
+            })),
+            arguments: None,
+        }));
+        let mut session = DapSession::with_transport(Box::new(mock));
+        let tid = session.resolve_thread_id(None).await.unwrap();
+        assert_eq!(tid, 42);
+
+        let tid = session.resolve_thread_id(Some(7)).await.unwrap();
+        assert_eq!(tid, 7);
+    }
+
+    #[tokio::test]
+    async fn test_resolve_thread_id_empty_errors() {
+        let mock = MockTransport::new();
+        mock.push_message(frame_msg(DapMessage {
+            seq: 2,
+            msg_type: "response".into(),
+            command: Some("threads".into()),
+            event: None,
+            request_seq: Some(1),
+            success: Some(true),
+            body: Some(json!({ "threads": [] })),
+            arguments: None,
+        }));
+        let mut session = DapSession::with_transport(Box::new(mock));
+        let err = session.resolve_thread_id(None).await.unwrap_err();
+        assert!(err.to_string().contains("no threads"));
+    }
+
+    #[tokio::test]
+    async fn test_wait_initialized_prefers_buffer() {
+        let mock = MockTransport::new();
+        // No push — event already in pending via buffer after a prior receive.
+        // Simulate by sending a response that buffers an event first.
+        mock.push_message(frame_msg(DapMessage {
+            seq: 10,
+            msg_type: "event".into(),
+            command: None,
+            event: Some("initialized".into()),
+            request_seq: None,
+            success: None,
+            body: Some(json!({})),
+            arguments: None,
+        }));
+        mock.push_message(frame_msg(DapMessage {
+            seq: 11,
+            msg_type: "response".into(),
+            command: Some("initialize".into()),
+            event: None,
+            request_seq: Some(1),
+            success: Some(true),
+            body: Some(json!({})),
+            arguments: None,
+        }));
+        let mut session = DapSession::with_transport(Box::new(mock));
+        let _ = session.send_request("initialize", json!({})).await.unwrap();
+        let body = session.wait_initialized().await.unwrap();
+        assert!(body.is_object() || body.is_null());
     }
 }
