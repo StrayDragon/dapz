@@ -9,7 +9,8 @@ use tokio::select;
 use tokio::sync::RwLock;
 
 use crate::codec::json_rpc::DapMessage;
-use crate::config::Config;
+use crate::codec::toon::value_to_toon;
+use crate::config::{Config, OutputFormat};
 use crate::error::DapzError;
 use crate::interceptors::InterceptorChain;
 use crate::transport::Transport;
@@ -195,24 +196,65 @@ impl Proxy {
     ///
     /// Returns the (possibly transformed) frame bytes, or empty if dropped.
     /// Always succeeds: on error, returns the original raw bytes (fail-open).
+    ///
+    /// Format handling (aligned with lspz):
+    /// - `passthrough` — original bytes, no interceptors
+    /// - `json` — compress, re-serialize DAP JSON frame
+    /// - `toon` — compress, wrap `body` as `{ format: "toon", text }`
     async fn process_server_message(&mut self, raw: &[u8]) -> Vec<u8> {
+        let format = self.config.read().await.output_format;
+        if format == OutputFormat::Passthrough {
+            return raw.to_vec();
+        }
+
         let msg = match DapMessage::from_frame(raw) {
             Ok(m) => m,
             Err(_) => return raw.to_vec(),
         };
 
         let direction = Direction::ServerToClient;
-
         let processed = match self.interceptor_chain.process(msg, direction).await {
             Ok(Some(m)) => m,
             Ok(None) => return Vec::new(),
-            Err(_) => return raw.to_vec(),
+            Err(e) => {
+                tracing::warn!(error = %e, "Interceptor failed, fail-open");
+                return raw.to_vec();
+            }
         };
 
-        // Re-serialize the possibly transformed message
+        if format == OutputFormat::Toon {
+            return self.toon_dap_frame(processed, raw);
+        }
+
         match processed.to_bytes() {
             Ok(bytes) => bytes,
-            Err(_) => raw.to_vec(),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to serialize DAP message, fail-open");
+                raw.to_vec()
+            }
+        }
+    }
+
+    /// Wrap compressed DAP `body` as `{ format: "toon", text }` (lspz-style envelope).
+    fn toon_dap_frame(&self, mut msg: DapMessage, raw: &[u8]) -> Vec<u8> {
+        let body = msg.body.take().unwrap_or(serde_json::Value::Null);
+        let text = match value_to_toon(&body) {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::warn!(error = %e, "TOON encode failed, fail-open");
+                return raw.to_vec();
+            }
+        };
+        msg.body = Some(serde_json::json!({
+            "format": "toon",
+            "text": text,
+        }));
+        match msg.to_bytes() {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to serialize TOON DAP frame, fail-open");
+                raw.to_vec()
+            }
         }
     }
 }
@@ -239,7 +281,27 @@ async fn read_stdin_frame(reader: &mut BufReader<tokio::io::Stdin>) -> Result<Ve
 mod tests {
     use super::*;
     use crate::config::Config;
+    use crate::interceptors::output::OutputCompressor;
     use crate::transport::mock::MockTransport;
+    use serde_json::json;
+
+    fn output_event_raw() -> Vec<u8> {
+        let msg = DapMessage {
+            seq: 3,
+            msg_type: "event".into(),
+            command: None,
+            event: Some("output".into()),
+            request_seq: None,
+            success: None,
+            body: Some(json!({
+                "category": "stdout",
+                "output": "\u{001b}[31mred\u{001b}[0m\n",
+                "source": { "name": "a.py", "path": "/tmp/a.py" }
+            })),
+            arguments: None,
+        };
+        msg.to_bytes().unwrap()
+    }
 
     #[tokio::test]
     async fn test_new_proxy_state() {
@@ -252,5 +314,65 @@ mod tests {
 
         let proxy = Proxy::new(config, transport, chain);
         assert_eq!(proxy.state(), State::Created);
+    }
+
+    #[tokio::test]
+    async fn test_passthrough_skips_compression() {
+        let config = Arc::new(RwLock::new(
+            Config::builder()
+                .backend_cmd("mock")
+                .output_format(OutputFormat::Passthrough)
+                .build()
+                .unwrap(),
+        ));
+        let chain = InterceptorChain::new(vec![Box::new(OutputCompressor)], config.clone());
+        let mut proxy = Proxy::new(config, Box::new(MockTransport::new()), chain);
+        let raw = output_event_raw();
+        let out = proxy.process_server_message(&raw).await;
+        assert_eq!(out, raw);
+    }
+
+    #[tokio::test]
+    async fn test_json_compresses_but_keeps_dap_body() {
+        let config = Arc::new(RwLock::new(
+            Config::builder()
+                .backend_cmd("mock")
+                .output_format(OutputFormat::Json)
+                .enable_output_compress(true)
+                .build()
+                .unwrap(),
+        ));
+        let chain = InterceptorChain::new(vec![Box::new(OutputCompressor)], config.clone());
+        let mut proxy = Proxy::new(config, Box::new(MockTransport::new()), chain);
+        let raw = output_event_raw();
+        let out = proxy.process_server_message(&raw).await;
+        assert_ne!(out, raw);
+        let msg = DapMessage::from_frame(&out).unwrap();
+        let body = msg.body.unwrap();
+        assert!(body.get("format").is_none());
+        let output = body["output"].as_str().unwrap_or("");
+        assert!(!output.contains('\u{001b}'));
+    }
+
+    #[tokio::test]
+    async fn test_toon_wraps_body() {
+        let config = Arc::new(RwLock::new(
+            Config::builder()
+                .backend_cmd("mock")
+                .output_format(OutputFormat::Toon)
+                .enable_output_compress(true)
+                .build()
+                .unwrap(),
+        ));
+        let chain = InterceptorChain::new(vec![Box::new(OutputCompressor)], config.clone());
+        let mut proxy = Proxy::new(config, Box::new(MockTransport::new()), chain);
+        let raw = output_event_raw();
+        let out = proxy.process_server_message(&raw).await;
+        let msg = DapMessage::from_frame(&out).unwrap();
+        assert_eq!(msg.event.as_deref(), Some("output"));
+        let body = msg.body.unwrap();
+        assert_eq!(body["format"], "toon");
+        let text = body["text"].as_str().unwrap();
+        assert!(!text.is_empty());
     }
 }
