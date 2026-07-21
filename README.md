@@ -66,6 +66,7 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 
 用 `cl100k_base`（tiktoken）在 `fixtures/bench` 上测量。紧凑 = 拦截器后的 DAP JSON；TOON = 压缩后 `body` 经 `value_to_toon`（对齐 MCP/SDK 默认出口）。
 
+<!-- BENCH-SUMMARY:START -->
 | 拦截器 | DAP 消息 | 紧凑 vs 原始 | TOON vs 原始 |
 |--------|---------|-------------|-------------|
 | OutputCompressor | `output` | 44.4% | 59.7% |
@@ -77,7 +78,8 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 | CappingInterceptor | 大响应截断 | 40.5% | 63.4% |
 | **总体（20 场景）** | — | **39.8%** | **55.4%** |
 
-> 紧凑格式对小输入收益有限；TOON 在 MCP/SDK 路径下额外省 token。完整表：`just bench-report`；快速演示：`just compress-demo`。
+> 紧凑格式对小输入收益有限；TOON 在 MCP/SDK 路径下额外省 token。完整表：[docs/src/benchmarks.md](docs/src/benchmarks.md)（`just gen-bench` 同步更新本表与完整报告）；快速演示：`just compress-demo`。
+<!-- BENCH-SUMMARY:END -->
 
 ## 输出格式
 

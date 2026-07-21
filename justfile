@@ -71,7 +71,7 @@ bench-report:
 compress-demo:
     cargo run --example compress-demo
 
-# Regenerate docs/src/benchmarks.md from fixtures.
+# Regenerate docs/src/benchmarks.md + README BENCH-SUMMARY block from fixtures.
 gen-bench:
     bash scripts/run-bench.sh
 
