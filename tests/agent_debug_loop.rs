@@ -9,10 +9,11 @@ use std::time::Duration;
 use dapz::adapters::resolve_python_debug_adapter;
 use dapz::agent_sdk::AgentHandle;
 
-mod common;
+#[path = "common/fixture.rs"]
+mod fixture;
 
 fn create_fixture() -> (std::path::PathBuf, tempfile::TempDir) {
-    common::create_test_script(
+    fixture::create_test_script(
         r#"
 def bug():
     xs = [1, 2, 0]
