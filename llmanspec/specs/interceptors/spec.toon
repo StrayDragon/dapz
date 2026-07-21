@@ -2,7 +2,7 @@ kind: llman.sdd.spec
 name: interceptors
 purpose: 拦截器：capping 与 DAP 压缩器（output/stack/vars/evaluate/scopes/exceptionInfo）。
 valid_scope[2]: src/interceptors/,tests/
-requirements[7]{req_id,title,statement}:
+requirements[8]{req_id,title,statement}:
   r9,Capping,系统 MUST 提供 CappingInterceptor 限制 output/stackTrace/variables 条目规模。
   r17,OutputCompressor,系统 MUST 压缩 output 事件（重复行折叠、类别缩写等）。
   r25,StackTraceCompressor,系统 MUST 压缩 stackTrace 响应（路径缩写、合成帧过滤等）。
@@ -10,7 +10,8 @@ requirements[7]{req_id,title,statement}:
   r5,EvaluateCompressor,系统 MUST 压缩 evaluate 响应（结果截断、去 memoryReference 等）。
   r6,ScopesCompressor,系统 MUST 压缩 scopes 响应（去掉位置噪声并保留 variablesReference）。
   r47,ExceptionInfoCompressor,系统 MUST 提供 ExceptionInfoCompressor，压缩 exceptionInfo 响应中的过长 details/堆栈噪声。
-scenarios[7]{req_id,id,given,when,then,feature}:
+  r59,Scopes Exception 基准,"系统 MUST 为 ScopesCompressor 与 ExceptionInfoCompressor 提供 fixtures/bench 场景，并纳入 bench-report 汇总。"
+scenarios[8]{req_id,id,given,when,then,feature}:
   r9,"cap-frames",超长 stackTrace,经 CappingInterceptor,帧数不超过配置上限,false
   r17,"fold-output",重复 stdout 行,经 OutputCompressor,折叠为带计数的紧凑形式,false
   r25,"abbrev-path",深路径 stack frame,经 StackTraceCompressor,路径缩短且可定位,false
@@ -18,3 +19,4 @@ scenarios[7]{req_id,id,given,when,then,feature}:
   r5,"truncate-eval",超长 evaluate result,经 EvaluateCompressor,截断到 max_evaluate_length,false
   r6,"scopes-keep-ref",含 source/line 的 scopes,经 ScopesCompressor,保留 variablesReference 且去掉位置噪声,false
   r47,"truncate-details",超长 exceptionInfo details,经 ExceptionInfoCompressor,details 被截断且保留 exceptionId/breakMode,true
+  r59,"bench-scopes-exception",存在 scopes 与 exception fixtures,"运行 bench-report",报告含二者场景行,true

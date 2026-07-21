@@ -1,0 +1,46 @@
+[
+  {
+    "name": "short exception details",
+    "interceptor": "exception_info_compressor",
+    "message": {
+      "seq": 40,
+      "type": "response",
+      "command": "exceptionInfo",
+      "request_seq": 39,
+      "success": true,
+      "body": {
+        "exceptionId": "ValueError",
+        "description": "invalid literal",
+        "breakMode": "always",
+        "details": {
+          "message": "invalid literal for int()",
+          "typeName": "ValueError",
+          "stackTrace": "File \"main.py\", line 10, in bug\n  int('x')\n"
+        }
+      }
+    }
+  },
+  {
+    "name": "long exception stackTrace",
+    "interceptor": "exception_info_compressor",
+    "message": {
+      "seq": 41,
+      "type": "response",
+      "command": "exceptionInfo",
+      "request_seq": 39,
+      "success": true,
+      "body": {
+        "exceptionId": "ZeroDivisionError",
+        "description": "division by zero",
+        "breakMode": "always",
+        "details": {
+          "message": "division by zero",
+          "typeName": "ZeroDivisionError",
+          "fullTypeName": "builtins.ZeroDivisionError",
+          "evaluateName": "exc",
+          "stackTrace": "Traceback (most recent call last):\n  File \"/home/user/project/src/a.py\", line 1, in <module>\n    run()\n  File \"/home/user/project/src/b.py\", line 20, in run\n    compute()\n  File \"/home/user/project/src/c.py\", line 40, in compute\n    divide(1, 0)\n  File \"/home/user/project/src/d.py\", line 5, in divide\n    return x / y\nZeroDivisionError: division by zero\nADDITIONAL CONTEXT DUMP:\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      }
+    }
+  }
+]

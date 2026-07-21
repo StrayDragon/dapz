@@ -2,38 +2,44 @@
 
 # dapz 压缩基准测试报告
 
-**版本**: v0.0.1
+**版本**: v0.3.1
 
-**日期**: 2026-05-21
+**日期**: 2026-07-21
 
-测量标准：将每条 DAP 消息序列化为 JSON，使用 `cl100k_base` tokenizer 计数。
+测量标准：原始/紧凑 = 整条 DAP JSON（`cl100k_base`）；TOON = 压缩后 `body` 经 `value_to_toon`（对齐 MCP/SDK 出口）。
 
-| 压缩器 | 场景 | 原始 (T) | 压缩 (T) | 节省 Δ% |
-|----------|------|----------|----------|--------|
-| OutputCompressor | simple stdout line | 27 | 27 | 0.0% |
-| OutputCompressor | multi-line with ANSI | 92 | 43 | 53.3% |
-| OutputCompressor | repeated lines with ANSI | 118 | 41 | 65.3% |
-| OutputCompressor | large output with source | 128 | 92 | 28.1% |
-| EvaluateCompressor | simple numeric result | 37 | 37 | 0.0% |
-| EvaluateCompressor | string result | 56 | 45 | 19.6% |
-| EvaluateCompressor | long JSON dump eval | 178 | 167 | 6.2% |
-| VariablesCompressor | few simple variables | 80 | 74 | 7.5% |
-| VariablesCompressor | mixed types with array | 193 | 145 | 24.9% |
-| VariablesCompressor | many vars with noise fields | 429 | 177 | 58.7% |
-| StackTraceCompressor | shallow call stack | 104 | 87 | 16.3% |
-| StackTraceCompressor | deep stack with synthetic frames | 384 | 181 | 52.9% |
-| StackTraceCompressor | large stack trace | 550 | 240 | 56.4% |
-| CappingInterceptor | large output event | 70 | 70 | 0.0% |
-| CappingInterceptor | large stack trace | 200 | 115 | 42.5% |
-| CappingInterceptor | large variables response | 197 | 93 | 52.8% |
+| 压缩器 | 场景 | 原始 (T) | 紧凑 (T) | TOON (T) | Δ% 紧凑 | Δ% TOON |
+|----------|------|----------|----------|----------|---------|---------|
+| OutputCompressor | simple stdout line | 27 | 27 | 13 | 0.0% | 51.9% |
+| OutputCompressor | multi-line with ANSI | 92 | 43 | 28 | 53.3% | 69.6% |
+| OutputCompressor | repeated lines with ANSI | 118 | 41 | 26 | 65.3% | 78.0% |
+| OutputCompressor | large output with source | 128 | 92 | 80 | 28.1% | 37.5% |
+| EvaluateCompressor | simple numeric result | 37 | 37 | 15 | 0.0% | 59.5% |
+| EvaluateCompressor | string result | 56 | 45 | 21 | 19.6% | 62.5% |
+| EvaluateCompressor | long JSON dump eval | 178 | 167 | 151 | 6.2% | 15.2% |
+| VariablesCompressor | few simple variables | 80 | 74 | 42 | 7.5% | 47.5% |
+| VariablesCompressor | mixed types with array | 193 | 145 | 98 | 24.9% | 49.2% |
+| VariablesCompressor | many vars with noise fields | 429 | 177 | 104 | 58.7% | 75.8% |
+| StackTraceCompressor | shallow call stack | 104 | 87 | 70 | 16.3% | 32.7% |
+| StackTraceCompressor | deep stack with synthetic frames | 384 | 181 | 158 | 52.9% | 58.9% |
+| StackTraceCompressor | large stack trace | 550 | 240 | 213 | 56.4% | 61.3% |
+| ScopesCompressor | locals with source location | 82 | 47 | 28 | 42.7% | 65.9% |
+| ScopesCompressor | multi scopes with noise | 146 | 80 | 44 | 45.2% | 69.9% |
+| ExceptionInfoCompressor | short exception details | 79 | 79 | 55 | 0.0% | 30.4% |
+| ExceptionInfoCompressor | long exception stackTrace | 322 | 251 | 231 | 22.0% | 28.3% |
+| CappingInterceptor | large output event | 70 | 70 | 55 | 0.0% | 21.4% |
+| CappingInterceptor | large stack trace | 200 | 115 | 69 | 42.5% | 65.5% |
+| CappingInterceptor | large variables response | 197 | 93 | 47 | 52.8% | 76.1% |
 
 ## 总结
 
-| 压缩器 | 场景数 | 原始 (T) | 压缩 (T) | 平均节省 Δ% |
-|----------|--------|----------|----------|-------------|
-| OutputCompressor | 4 | 365 | 203 | 44.4% |
-| EvaluateCompressor | 3 | 271 | 249 | 8.1% |
-| VariablesCompressor | 3 | 702 | 396 | 43.6% |
-| StackTraceCompressor | 3 | 1038 | 508 | 51.1% |
-| CappingInterceptor | 3 | 467 | 278 | 40.5% |
-| **总体** | **16** | **2843** | **1634** | **42.5%** |
+| 压缩器 | 场景数 | 原始 (T) | 紧凑 (T) | TOON (T) | Δ% 紧凑 | Δ% TOON |
+|----------|--------|----------|----------|----------|---------|---------|
+| OutputCompressor | 4 | 365 | 203 | 147 | 44.4% | 59.7% |
+| EvaluateCompressor | 3 | 271 | 249 | 187 | 8.1% | 31.0% |
+| VariablesCompressor | 3 | 702 | 396 | 244 | 43.6% | 65.2% |
+| StackTraceCompressor | 3 | 1038 | 508 | 441 | 51.1% | 57.5% |
+| ScopesCompressor | 2 | 228 | 127 | 72 | 44.3% | 68.4% |
+| ExceptionInfoCompressor | 2 | 401 | 330 | 286 | 17.7% | 28.7% |
+| CappingInterceptor | 3 | 467 | 278 | 171 | 40.5% | 63.4% |
+| **总体** | **20** | **3472** | **2091** | **1548** | **39.8%** | **55.4%** |

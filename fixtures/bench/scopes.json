@@ -1,0 +1,72 @@
+[
+  {
+    "name": "locals with source location",
+    "interceptor": "scopes_compressor",
+    "message": {
+      "seq": 2,
+      "type": "response",
+      "command": "scopes",
+      "request_seq": 1,
+      "success": true,
+      "body": {
+        "scopes": [
+          {
+            "name": "Locals",
+            "variablesReference": 100,
+            "expensive": false,
+            "presentationHint": "locals",
+            "source": {"path": "/home/user/project/src/bug.py", "name": "bug.py"},
+            "line": 10,
+            "column": 0,
+            "endLine": 20,
+            "endColumn": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "multi scopes with noise",
+    "interceptor": "scopes_compressor",
+    "message": {
+      "seq": 3,
+      "type": "response",
+      "command": "scopes",
+      "request_seq": 2,
+      "success": true,
+      "body": {
+        "scopes": [
+          {
+            "name": "Locals",
+            "variablesReference": 100,
+            "expensive": false,
+            "presentationHint": "locals",
+            "source": {"path": "/home/user/project/src/main.rs"},
+            "line": 42,
+            "column": 5,
+            "endLine": 80,
+            "endColumn": 1
+          },
+          {
+            "name": "Globals",
+            "variablesReference": 200,
+            "expensive": true,
+            "presentationHint": "globals",
+            "source": {"path": "/home/user/project/src/main.rs"},
+            "line": 1,
+            "column": 0,
+            "endLine": 200,
+            "endColumn": 1
+          },
+          {
+            "name": "Closure",
+            "variablesReference": 300,
+            "expensive": false,
+            "line": 15,
+            "column": 2
+          }
+        ]
+      }
+    }
+  }
+]

@@ -62,18 +62,20 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 
 ## 压缩效果
 
-用 tiktoken 在真实 debugpy DAP 会话输出上测量。
+用 `cl100k_base`（tiktoken）在 `fixtures/bench` 上测量。紧凑 = 拦截器后的 DAP JSON；TOON = 压缩后 `body` 经 `value_to_toon`（对齐 MCP/SDK 默认出口）。
 
-| 拦截器 | DAP 消息 | 主要策略 | 预期节省 |
-|--------|---------|---------|---------|
-| OutputCompressor | `output` 事件 | 重复行折叠 + 类别缩写 + ANSI 剥离 | 30–60% |
-| VariablesCompressor | `variables` 响应 | 类型前缀合并 + 数组摘要 + 长值截断 | 40–60% |
-| StackTraceCompressor | `stackTrace` 响应 | 路径缩写 + 函数裁剪 + 合成帧过滤 | 40–70% |
-| EvaluateCompressor | `evaluate` 响应 | 结果截断 + 内存地址移除 | 10–30% |
-| CappingInterceptor | 任意大响应 | 截断到 N 条 | 80–95% |
+| 拦截器 | DAP 消息 | 紧凑 vs 原始 | TOON vs 原始 |
+|--------|---------|-------------|-------------|
+| OutputCompressor | `output` | 44.4% | 59.7% |
+| VariablesCompressor | `variables` | 43.6% | 65.2% |
+| StackTraceCompressor | `stackTrace` | 51.1% | 57.5% |
+| ScopesCompressor | `scopes` | 44.3% | 68.4% |
+| EvaluateCompressor | `evaluate` | 8.1% | 31.0% |
+| ExceptionInfoCompressor | `exceptionInfo` | 17.7% | 28.7% |
+| CappingInterceptor | 大响应截断 | 40.5% | 63.4% |
+| **总体（20 场景）** | — | **39.8%** | **55.4%** |
 
-> 深层调用栈 + 大数组变量的场景节省最大。快速演示：`just compress-demo`。
-
+> 紧凑格式对小输入收益有限；TOON 在 MCP/SDK 路径下额外省 token。完整表：`just bench-report`；快速演示：`just compress-demo`。
 ## 输出格式
 
 | 格式 | 说明 | 适用场景 |

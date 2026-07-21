@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r59,Scopes Exception 基准,"系统 MUST 为 ScopesCompressor 与 ExceptionInfoCompressor 提供 fixtures/bench 场景，并纳入 bench-report 汇总。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r59,"bench-scopes-exception",存在 scopes 与 exception fixtures,运行 bench-report,报告含二者场景行

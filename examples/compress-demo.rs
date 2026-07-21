@@ -11,7 +11,9 @@ use dapz::codec::json_rpc::DapMessage;
 use dapz::interceptors::Interceptor;
 use dapz::interceptors::capping::CappingInterceptor;
 use dapz::interceptors::evaluate::EvaluateCompressor;
+use dapz::interceptors::exception::ExceptionInfoCompressor;
 use dapz::interceptors::output::OutputCompressor;
+use dapz::interceptors::scopes::ScopesCompressor;
 use dapz::interceptors::stacktrace::StackTraceCompressor;
 use dapz::interceptors::variables::VariablesCompressor;
 use dapz::proxy::Direction;
@@ -157,6 +159,61 @@ fn main() {
                     {"id": 3, "name": "parse(buf: &[u8]) -> Result<Packet>", "source": {"path": "/home/user/project/src/parser.rs", "name": "parser.rs"}, "line": 100, "column": 4, "instructionPointerReference": "0xaaa2", "moduleId": 100},
                     {"id": 4, "name": "label_frame", "presentationHint": "label", "source": {"path": "/usr/lib/libc.so.6", "name": "libc.so.6"}, "line": 0, "column": 0},
                 ]
+            })),
+            arguments: None,
+        },
+    );
+
+    // ScopesCompressor
+    demo_interceptor(
+        &bpe,
+        "ScopesCompressor",
+        &ScopesCompressor,
+        DapMessage {
+            seq: 35,
+            msg_type: "response".into(),
+            command: Some("scopes".into()),
+            event: None,
+            request_seq: Some(34),
+            success: Some(true),
+            body: Some(serde_json::json!({
+                "scopes": [{
+                    "name": "Locals",
+                    "variablesReference": 100,
+                    "expensive": false,
+                    "presentationHint": "locals",
+                    "source": {"path": "/home/user/project/src/bug.py"},
+                    "line": 10,
+                    "column": 0,
+                    "endLine": 20,
+                    "endColumn": 1
+                }]
+            })),
+            arguments: None,
+        },
+    );
+
+    // ExceptionInfoCompressor
+    demo_interceptor(
+        &bpe,
+        "ExceptionInfoCompressor",
+        &ExceptionInfoCompressor::new(800),
+        DapMessage {
+            seq: 36,
+            msg_type: "response".into(),
+            command: Some("exceptionInfo".into()),
+            event: None,
+            request_seq: Some(35),
+            success: Some(true),
+            body: Some(serde_json::json!({
+                "exceptionId": "ZeroDivisionError",
+                "description": "division by zero",
+                "breakMode": "always",
+                "details": {
+                    "message": "division by zero",
+                    "typeName": "ZeroDivisionError",
+                    "stackTrace": format!("{}\n{}", "frame\n".repeat(40), "x".repeat(900))
+                }
             })),
             arguments: None,
         },
