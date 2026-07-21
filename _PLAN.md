@@ -288,7 +288,7 @@ main()
 | `config_watcher` | notify 未接线 | **跳过**（除非热调 capping） |
 | `init` / uri / MCP Roots | LSP 工作区模型 | **跳过** |
 | Agent SDK → daemon | ✅ opt-in `via_daemon` | 完成 |
-| lldb e2e | 仅发现，无 harness | 可选 job |
+| lldb e2e | ✅ 可选 ignored + harness（无适配器则 SKIP） | 完成 |
 | WsTransport | ✅ 已移除 stub + feature（DAP 不用） | 完成 |
 
 **不做（除非新决策）**：workspace roots / uri / init / config_watcher。

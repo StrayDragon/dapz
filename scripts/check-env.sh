@@ -116,11 +116,33 @@ else
   bad "cargo build --features mcp,agent-sdk failed"
 fi
 
-if command -v lldb-vscode >/dev/null || command -v lldb-dap >/dev/null \
-  || [[ -x "${CARGO_HOME:-$HOME/.cargo}/bin/lldb-dap" ]]; then
-  ok "lldb adapter present (optional)"
+resolve_lldb() {
+  if command -v lldb-dap >/dev/null 2>&1; then
+    command -v lldb-dap
+    return 0
+  fi
+  if command -v lldb-vscode >/dev/null 2>&1; then
+    command -v lldb-vscode
+    return 0
+  fi
+  local candidates=(
+    "${CARGO_HOME:-$HOME/.cargo}/bin/lldb-dap"
+    "${HOME}/.local/bin/lldb-dap"
+  )
+  for c in "${candidates[@]}"; do
+    if [[ -x "$c" ]]; then
+      echo "$c"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if DAPZ_LLDB_BACKEND="$(resolve_lldb)"; then
+  ok "lldb adapter: $DAPZ_LLDB_BACKEND"
 else
-  wrn "lldb-vscode/lldb-dap not found (optional)"
+  wrn "lldb-dap/lldb-vscode not found (optional e2e)"
+  DAPZ_LLDB_BACKEND=""
 fi
 
 echo
@@ -130,4 +152,5 @@ if [[ "$fail" -ne 0 ]]; then
 fi
 echo "check-env: OK (${warn} warnings)"
 echo "DAPZ_DEBUGPY_BACKEND=${DAPZ_DEBUGPY_BACKEND:-}"
+echo "DAPZ_LLDB_BACKEND=${DAPZ_LLDB_BACKEND:-}"
 exit 0

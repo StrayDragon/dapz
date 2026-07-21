@@ -142,7 +142,7 @@ dapz daemon --cwd /path/to/project list
 ```bash
 # 推荐：安装 debugpy 后端（harness 必测）
 uv tool install debugpy
-# 可选：lldb-dap / lldb-vscode（C/C++/Rust 映射）
+# 可选：lldb-dap / lldb-vscode（C/C++/Rust；`just harness` 会跑可选 e2e）
 
 cargo install dapz
 cargo install dapz --features mcp
@@ -161,8 +161,8 @@ cargo install --path . --features mcp
 just compress-demo   # 拦截器 token 演示
 just qa              # fmt + clippy + test + doc-check + prek
 just verify          # qa + doc-test + SDD + prek
-just harness-env     # rustc / python / debugpy / mcp
-just harness         # 全部门禁（含 debugpy e2e）
+just harness-env     # rustc / python / debugpy / optional lldb / mcp
+just harness         # 全部门禁（debugpy e2e 必测；lldb e2e 可选）
 ```
 
 ## 开发

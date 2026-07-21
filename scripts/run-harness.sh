@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full harness: env → qa → optional debugpy e2e.
+# Full harness: env → qa → optional debugpy e2e → optional lldb e2e.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,17 +9,23 @@ cd "$ROOT"
 export PATH="${HOME}/.local/bin:${CARGO_HOME:-$HOME/.cargo}/bin:${PATH:-}"
 
 REQUIRE_E2E="${DAPZ_REQUIRE_E2E:-1}"
+REQUIRE_LLDB_E2E="${DAPZ_REQUIRE_LLDB_E2E:-0}"
 SKIP_E2E=0
 
 echo "== dapz harness =="
 
 ENV_OUT="$(mktemp)"
 if bash scripts/check-env.sh | tee "$ENV_OUT"; then
-  # Pick up discovered backend for e2e
+  # Pick up discovered backends for e2e
   if grep -q '^DAPZ_DEBUGPY_BACKEND=' "$ENV_OUT"; then
     # shellcheck disable=SC1090
     eval "$(grep '^DAPZ_DEBUGPY_BACKEND=' "$ENV_OUT" | tail -1)"
     export DAPZ_DEBUGPY_BACKEND
+  fi
+  if grep -q '^DAPZ_LLDB_BACKEND=' "$ENV_OUT"; then
+    # shellcheck disable=SC1090
+    eval "$(grep '^DAPZ_LLDB_BACKEND=' "$ENV_OUT" | tail -1)"
+    export DAPZ_LLDB_BACKEND
   fi
 else
   if [[ "${CI:-}" == "true" || "${DAPZ_CI_SKIP_ENV:-}" == "1" ]]; then
@@ -58,6 +64,21 @@ else
     exit 1
   fi
   echo "SKIP  debugpy e2e"
+fi
+
+echo
+echo "-- e2e (ignored lldb, optional) --"
+if [[ "$SKIP_E2E" -eq 1 ]]; then
+  echo "SKIP  lldb_integration (env)"
+elif [[ -n "${DAPZ_LLDB_BACKEND:-}" ]] && command -v cc >/dev/null 2>&1; then
+  export DAPZ_LLDB_BACKEND
+  cargo test --all-features --test lldb_integration -- --ignored --test-threads=1
+else
+  if [[ "$REQUIRE_LLDB_E2E" == "1" ]]; then
+    echo "FAIL  lldb/cc missing and DAPZ_REQUIRE_LLDB_E2E=1"
+    exit 1
+  fi
+  echo "SKIP  lldb e2e (optional)"
 fi
 
 echo
