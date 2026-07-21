@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r66,压缩契约版本,"系统 MUST 公布压缩契约标识 dapz-compress/1；改变删除字段集合时 MUST 递增契约版本并更新文档，避免适配器升级时静默改变 Agent 可见字段。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r66,"contract-const",查阅 interceptors 模块,读取契约常量,值为 dapz-compress/1

@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r38,DAP 兼容透传,"系统 MUST 对非拦截白名单的 DAP 消息保持透传兼容（body 语义不变）；拦截与 Session 封装 MUST 以 DAP 规范字段为默认，适配器特例 MUST 显式分档。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r38,"compat-doc",查阅 dap-compatibility 文档,检查矩阵,含 debugpy 与 lldb-dap 分档说明

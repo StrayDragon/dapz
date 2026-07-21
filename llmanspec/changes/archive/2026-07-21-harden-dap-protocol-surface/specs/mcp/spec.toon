@@ -1,0 +1,8 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r64,DAP 规范优先,"系统 MUST 使 DapSession 的 initialize/launch 默认仅使用 DAP 规范通用字段；适配器扩展（如 debugpy console）MUST 仅在已识别的 AdapterKind 下启用，并在文档中标明兼容范围。",null,null,null
+  add_requirement,r65,threadId 解析,"当调用方未提供 threadId 时，系统 MUST 通过 threads 请求解析线程 id，MUST NOT 盲默认 threadId=1。",null,null,null
+op_scenarios[3]{req_id,id,given,when,then}:
+  r64,"generic-no-console",backend 不含 debugpy,launch_program,launch 参数无 console 字段
+  r64,"debugpy-console",backend 含 debugpy,launch_program,launch 含 console=internalConsole
+  r65,"resolve-tid",threads 返回 id=42 且未传 threadId,get_stack,请求使用 threadId=42
