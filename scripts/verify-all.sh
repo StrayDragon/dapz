@@ -15,8 +15,8 @@ step() {
 step "cargo fmt --check"
 cargo fmt -- --check
 
-step "cargo clippy --all-features"
-cargo clippy --all-features -- -D warnings
+step "cargo clippy --all-features --all-targets"
+cargo clippy --all-features --all-targets -- -D warnings
 
 step "cargo test --all-features"
 cargo test --all-features
