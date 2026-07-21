@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r45,默认关闭,"Metrics 默认 MUST 关闭；仅当 --metrics 或 DAPZ_METRICS 显式启用时 proxy 拦截链才包装计量（零开销默认路径）。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r45,"cli-or-env",传 --metrics 或设 DAPZ_METRICS=1,启动 proxy 链,计量包装启用

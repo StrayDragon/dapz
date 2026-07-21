@@ -283,15 +283,15 @@ main()
 
 | 项 | 说明 | 建议 |
 |----|------|------|
-| Proxy `--metrics` CLI | 现仅 `DAPZ_METRICS` env | 可选 |
-| Proxy `--transport` tcp/ws | 库有、CLI 仅 stdio | 低（适配器多为 stdio） |
-| Proxy 默认 toon | 现默认 json（IDE 友好） | 产品决策 |
+| Proxy `--metrics` / `--transport` | ✅ CLI 已对齐 lspz 形态 | 完成 |
+| Proxy 默认 toon | **冻结为 json**（IDE）；MCP/SDK 仍 toon | 不做翻转 |
 | `config_watcher` | notify 未接线 | **跳过**（除非热调 capping） |
 | `init` / uri / MCP Roots | LSP 工作区模型 | **跳过** |
-| Agent SDK → daemon | 仍进程内 session | ✅ opt-in `via_daemon`（DAP 按需默认本地） |
+| Agent SDK → daemon | ✅ opt-in `via_daemon` | 完成 |
 | lldb e2e | 仅发现，无 harness | 可选 job |
+| WsTransport 真实现 | feature 有、连接仍 stub | 可选（DAP 少用 ws） |
 
-**不做（除非新决策）**：workspace roots / uri / init / config_watcher。
+**不做（除非新决策）**：workspace roots / uri / init / config_watcher；Proxy 默认改 toon。
 
 ### 与 lspz 架构对照（成熟度）
 

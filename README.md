@@ -47,6 +47,8 @@ dapz = { version = "0.3", default-features = false, features = ["agent-sdk"] }
 ```bash
 dapz proxy --backend "python3 -m debugpy.adapter"
 dapz proxy --output toon --backend "python3 -m debugpy.adapter"
+dapz proxy --metrics --backend "python3 -m debugpy.adapter"
+dapz proxy --transport tcp://127.0.0.1:4711 --backend unused
 ```
 
 **MCP 服务器** — 把调试能力暴露给 Cursor 等 Agent（默认经 daemon 复用会话）：
@@ -76,13 +78,16 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 | **总体（20 场景）** | — | **39.8%** | **55.4%** |
 
 > 紧凑格式对小输入收益有限；TOON 在 MCP/SDK 路径下额外省 token。完整表：`just bench-report`；快速演示：`just compress-demo`。
+
 ## 输出格式
 
 | 格式 | 说明 | 适用场景 |
 |------|------|---------|
-| `toon` | 自描述行协议 + 表格 | MCP / Agent SDK 默认；LLM 直接消费 |
-| `json`（proxy 默认） | 标准 JSON | IDE / 结构化管道 |
+| `json`（**proxy 默认**） | 标准 JSON | IDE / 调试器管道（产品冻结，不改成 toon） |
+| `toon` | 自描述行协议 + 表格 | MCP / Agent SDK 默认；`dapz proxy --output toon` |
 | `passthrough` | 原始 DAP JSON 不动 | 调试 |
+
+Proxy 额外旋钮：`--metrics`（或 `DAPZ_METRICS`）、`--transport stdio|tcp://host:port|ws://…`（默认 stdio；ws 需 `transport-websocket`，实现仍为 stub）。
 
 ## Feature flags
 

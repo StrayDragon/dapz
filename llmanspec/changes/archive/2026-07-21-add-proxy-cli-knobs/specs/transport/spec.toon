@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r30,多协议支持,"系统 MUST 支持 StdioTransport、TcpTransport、WsTransport；dapz proxy --transport MUST 能选择 stdio（默认）、tcp://host:port，以及在启用 transport-websocket 时的 ws:// 或 wss://。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r30,"cli-transport-tcp",--transport tcp://127.0.0.1:1234,启动 proxy,使用 TcpTransport 连接而非 spawn stdio

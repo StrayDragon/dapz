@@ -1,0 +1,8 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r60,Proxy CLI 旋钮,"系统 MUST 使 dapz proxy 支持 --metrics 与 --transport（stdio 或 tcp:// 或 ws://）；--transport 默认 stdio；--output 默认 MUST 保持 json（IDE 友好），与 MCP/SDK 的 TOON 默认区分。",null,null,null
+  modify_requirement,r28,CLI 子命令,CLI MUST 提供 dapz proxy（及别名 p）与 dapz mcp 子命令，且 proxy 子命令 MUST 暴露 metrics 与 transport 旋钮。,null,null,null
+op_scenarios[3]{req_id,id,given,when,then}:
+  r60,"proxy-metrics-flag",传 --metrics,构建拦截链,MeteredInterceptor 启用
+  r60,"proxy-transport-help","运行 dapz proxy --help",查看选项,列出 --transport 与 --metrics
+  r28,"help-subcommands","运行 dapz --help",查看子命令,列出 proxy 与 mcp
