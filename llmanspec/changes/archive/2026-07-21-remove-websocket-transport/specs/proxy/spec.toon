@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r60,Proxy CLI 旋钮,"系统 MUST 使 dapz proxy 支持 --metrics 与 --transport（stdio 或 tcp://）；--transport 默认 stdio；--output 默认 MUST 为 toon（与 MCP/SDK 一致），IDE 可显式选用 json。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r60,"proxy-no-ws-help","运行 dapz proxy --help",查看 --transport 说明,不承诺 ws:// 支持

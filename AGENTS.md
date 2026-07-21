@@ -24,7 +24,7 @@ Project conventions for dapz (DAP compression proxy).
 
 - Edition 2024
 - Stable toolchain (pinned in `rust-toolchain.toml`)
-- Single crate `dapz` with feature flags (`cli`, `mcp`, `agent-sdk`, `transport-tcp`, `transport-websocket`)
+- Single crate `dapz` with feature flags (`cli`, `mcp`, `agent-sdk`, `transport-tcp`)
 
 ### Code Quality
 

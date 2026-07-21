@@ -157,7 +157,7 @@ struct ProxyArgs {
     #[arg(long, default_value_t = false)]
     metrics: bool,
 
-    /// Backend transport: `stdio` (default), `tcp://host:port`, or `ws://`/`wss://`
+    /// Backend transport: `stdio` (default) or `tcp://host:port`
     #[arg(long, default_value = "stdio")]
     transport: String,
 }
@@ -468,37 +468,8 @@ async fn create_transport(
             });
     }
 
-    if scheme.starts_with("ws://") || scheme.starts_with("wss://") {
-        return connect_websocket(scheme).await;
-    }
-
     eprintln!(
-        "Unknown transport scheme '{scheme}'. Use 'stdio', 'tcp://host:port', or 'ws://url'."
+        "Unknown or unsupported transport scheme '{scheme}'. Use 'stdio' or 'tcp://host:port'."
     );
     Err(ExitCode::FAILURE)
-}
-
-async fn connect_websocket(scheme: &str) -> Result<Box<dyn Transport>, ExitCode> {
-    #[cfg(feature = "transport-websocket")]
-    {
-        use dapz::WsTransport;
-        WsTransport::connect(scheme)
-            .await
-            .map(|t| {
-                tracing::info!(url = %scheme, "Connected to WebSocket DAP adapter");
-                Box::new(t) as Box<dyn Transport>
-            })
-            .map_err(|e| {
-                eprintln!("Failed to connect to WebSocket adapter '{scheme}': {e}");
-                ExitCode::FAILURE
-            })
-    }
-    #[cfg(not(feature = "transport-websocket"))]
-    {
-        let _ = scheme;
-        eprintln!(
-            "WebSocket transport is not enabled. Build with `--features transport-websocket`."
-        );
-        Err(ExitCode::FAILURE)
-    }
 }
