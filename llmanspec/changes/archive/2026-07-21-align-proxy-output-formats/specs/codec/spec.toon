@@ -1,0 +1,5 @@
+kind: llman.sdd.delta
+ops[1]{op,req_id,title,statement,from,to,name}:
+  modify_requirement,r16,TOON 输出,"系统 MUST 提供 value_to_toon：将任意 JSON Value 编码为 TOON 文本，且 MUST 使用 toon-format（encode_default）实现，以保证与官方 TOON 规范一致。",null,null,null
+op_scenarios[1]{req_id,id,given,when,then}:
+  r16,"toon-format-crate",含嵌套对象与表格数组的 Value,调用 value_to_toon,得到非空 TOON 字符串

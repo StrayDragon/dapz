@@ -69,14 +69,14 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 <!-- BENCH-SUMMARY:START -->
 | 拦截器 | DAP 消息 | 紧凑 vs 原始 | TOON vs 原始 |
 |--------|---------|-------------|-------------|
-| OutputCompressor | `output` | 44.4% | 59.7% |
-| VariablesCompressor | `variables` | 43.6% | 65.2% |
-| StackTraceCompressor | `stackTrace` | 51.1% | 57.5% |
-| ScopesCompressor | `scopes` | 44.3% | 68.4% |
-| EvaluateCompressor | `evaluate` | 8.1% | 31.0% |
-| ExceptionInfoCompressor | `exceptionInfo` | 17.7% | 28.7% |
-| CappingInterceptor | 大响应截断 | 40.5% | 63.4% |
-| **总体（20 场景）** | — | **39.8%** | **55.4%** |
+| OutputCompressor | `output` | 44.5% | 59.8% |
+| VariablesCompressor | `variables` | 43.6% | 55.4% |
+| StackTraceCompressor | `stackTrace` | 52.1% | 44.8% |
+| ScopesCompressor | `scopes` | 43.9% | 58.8% |
+| EvaluateCompressor | `evaluate` | 8.1% | 33.9% |
+| ExceptionInfoCompressor | `exceptionInfo` | 17.9% | 29.0% |
+| CappingInterceptor | 大响应截断 | 40.6% | 63.7% |
+| **总体（20 场景）** | — | **40.0%** | **49.3%** |
 
 > 紧凑格式对小输入收益有限；TOON 在 MCP/SDK 路径下额外省 token。完整表：[docs/src/benchmarks.md](docs/src/benchmarks.md)（`just gen-bench` 同步更新本表与完整报告）；快速演示：`just compress-demo`。
 <!-- BENCH-SUMMARY:END -->
