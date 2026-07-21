@@ -1,7 +1,7 @@
 # dapz Project Roadmap
 
 > **dap** **z**ip — 对 AI Coding Agent 友好的 DAP 压缩代理
-> **当前**：v0.3.1（准发布能力已齐；相对 lspz 为早期 0.x）
+> **当前**：v0.4.0（准发布能力已齐并含 `dapz init`；相对 lspz 为早期 0.x）
 
 ## 项目愿景
 
@@ -88,8 +88,9 @@
 | **v0.1.0** | MVP：Proxy + TOON + MCP + Agent SDK + harness |
 | **v0.2.0** | SDD + AgentPool + verify + metrics + Tier-1 exception |
 | **v0.3.0** | daemon + MCP 默认连 daemon |
-| **v0.3.1** *(当前)* | lifecycle / lldb 发现与 e2e / Proxy 输出格式实装 / 协议硬化 / bench 自动同步 |
-| **后续 0.x** | 可选：`init` 注入、更多 adapter profile；经 llman SDD 推进 |
+| **v0.3.1** | lifecycle / lldb / Proxy 输出格式 / 协议硬化 / bench 同步 |
+| **v0.4.0** *(当前)* | `dapz init` 对齐 lspz（Claude Code MCP 注入） |
+| **后续 0.x** | 可选更多 adapter profile；经 llman SDD 推进 |
 
 详见 [CHANGELOG.md](CHANGELOG.md)。准发布实施记录见 [`_PLAN.md`](_PLAN.md)。
 

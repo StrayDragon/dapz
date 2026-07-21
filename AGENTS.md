@@ -186,7 +186,8 @@ Project conventions for dapz (DAP compression proxy).
 - v0.1.0: MVP（Proxy + TOON + MCP + Agent SDK + harness）
 - v0.2.0: SDD + AgentPool + metrics + Tier-1 exception
 - v0.3.0: daemon + MCP 默认连 daemon
-- v0.3.1: lifecycle / lldb / Proxy 输出格式 / 协议硬化 / bench 同步（当前）
+- v0.3.1: lifecycle / lldb / Proxy 输出格式 / 协议硬化 / bench 同步
+- v0.4.0: `dapz init`（Claude Code MCP，对齐 lspz）（当前）
 
 ### 检查点规则
 
