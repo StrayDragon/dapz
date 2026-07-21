@@ -1,0 +1,7 @@
+kind: llman.sdd.delta
+ops[2]{op,req_id,title,statement,from,to,name}:
+  add_requirement,r61,Proxy 默认 TOON,"系统 MUST 使 dapz proxy 的默认 OutputFormat 为 toon；用户 MUST 仍可通过 --output json 或 passthrough 覆盖。",null,null,null
+  modify_requirement,r60,Proxy CLI 旋钮,"系统 MUST 使 dapz proxy 支持 --metrics 与 --transport（stdio 或 tcp://）；--transport 默认 stdio；--output 默认 MUST 为 toon（与 MCP/SDK 一致），IDE 可显式选用 json。",null,null,null
+op_scenarios[2]{req_id,id,given,when,then}:
+  r61,"proxy-default-toon",未传 --output,解析 ProxyArgs / Config 缺省,output_format 为 toon
+  r60,"proxy-output-json-override",传 --output json,启动 proxy 配置,使用 JSON 输出

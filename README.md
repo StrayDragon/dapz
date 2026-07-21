@@ -46,7 +46,7 @@ dapz = { version = "0.3", default-features = false, features = ["agent-sdk"] }
 
 ```bash
 dapz proxy --backend "python3 -m debugpy.adapter"
-dapz proxy --output toon --backend "python3 -m debugpy.adapter"
+dapz proxy --output json --backend "python3 -m debugpy.adapter"   # IDE / 结构化管道
 dapz proxy --metrics --backend "python3 -m debugpy.adapter"
 dapz proxy --transport tcp://127.0.0.1:4711 --backend unused
 ```
@@ -83,8 +83,8 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 
 | 格式 | 说明 | 适用场景 |
 |------|------|---------|
-| `json`（**proxy 默认**） | 标准 JSON | IDE / 调试器管道（产品冻结，不改成 toon） |
-| `toon` | 自描述行协议 + 表格 | MCP / Agent SDK 默认；`dapz proxy --output toon` |
+| `toon`（**proxy / MCP / SDK 默认**） | 自描述行协议 + 表格 | Agent / LLM 直连 |
+| `json` | 标准 JSON | IDE：`dapz proxy --output json` |
 | `passthrough` | 原始 DAP JSON 不动 | 调试 |
 
 Proxy 额外旋钮：`--metrics`（或 `DAPZ_METRICS`）、`--transport stdio|tcp://host:port|ws://…`（默认 stdio；ws 需 `transport-websocket`，实现仍为 stub）。
