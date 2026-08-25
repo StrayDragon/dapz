@@ -1,8 +1,8 @@
 ---
 name: "llman-sdd-archive"
-description: "Archive completed llman SDD changes. BDD-off merges TOON deltas into main specs; BDD-on seals change docs only after attach/checkpoint, then a local merge promotes live specs. Use after verify reports all-clear."
+description: "Archive completed llman SDD changes. Auto ff-merge into the default branch, then rename change docs to archive/. Use after verify reports all-clear."
 metadata:
-  version: "0.0.64"
+  version: "0.0.68"
   llman_sdd:
     bdd_mode: "off"
     skill_set: "default"
@@ -10,7 +10,7 @@ metadata:
 
 # LLMAN SDD Archive
 
-Use this skill to archive completed changes. **BDD-off**: merge delta specs into main specs. **BDD-on**: move change docs only (specs already live on the feature branch), then promote via a local merge into the default branch (`git push` / hosting PR are optional).
+Use this skill to archive completed changes. Prerequisites: verify all-green, and the change already has Branch binding plus Specs landing (or `skip_specs_landing`; live specs are on the bound branch). Archive/finalize **auto ff-merges** into the default branch, then **renames** change docs to `changes/archive/` (one follow-up `git commit` for the dirty rename). `git push` / hosting PR are optional.
 
 ## Pipeline Position
 
@@ -18,20 +18,20 @@ Use this skill to archive completed changes. **BDD-off**: merge delta specs into
 flowchart LR
     verify["llman-sdd-verify<br/>Verify"] --> archive
     archive["★ llman-sdd-archive ★<br/>Archive (you are here)"]
-    archive --> commit["git commit<br/>Done"]
 
     style archive fill:#fff3cd,stroke:#ffc107,stroke-width:3px
 ```
 
-> 📍 You are in the archive phase: the last stop in the pipeline.
+> 📍 You are in the archive phase: the last stop in the Git-native lifecycle.
 > 📎 If specs get too large, run `llman-sdd-specs-compact` to compress.
 
 ## Hard Constraints
 
 - **Must pass verify phase all-green first**: don't archive changes that haven't passed verification.
+- **Must already have Branch binding**: `change start` / `attach` done; otherwise STOP.
 - **SSOT validation**: every change must pass `llman sdd validate <id> --strict --no-interactive` before archiving.
 - **Don't ask "should I continue?"**: execute the full batch to completion unless you hit an unresolvable error.
-- **BDD-on close-out MUST NOT default to PR/push**: after docs archive, default to merging the feature branch into the default branch **locally** (e.g. `git switch <default> && git merge --ff-only <feature>`). `git push` / hosting PR (`gh pr create`/`gh pr merge`) are optional — only when the user or project explicitly requires remote review. **Agent MUST NOT** push or open a PR by default on this skill's account.
+- **Close-out MUST NOT default to PR/push**: after archive/finalize, default to a local ff-merge (handled by the CLI) and one `git commit` for the docs rename. `git push` / hosting PR are optional — only when the user or project explicitly requires remote review. **Agent MUST NOT** push or open a PR by default on this skill's account.
 
 ## Steps
 
@@ -52,15 +52,14 @@ flowchart LR
   - default: `llman sdd change archive <id>`
   - tooling-only: `llman sdd change archive <id> --skip-specs`
   - **stop immediately on first failure**, report remaining unprocessed IDs.
-- **BDD-on (Git-native Partitioned SSOT)**:
-  - Prerequisites: `llman sdd change attach <id>` done, still on the feature branch.
-  - `change archive` / `change finalize` move **change documentation only** into `changes/archive/` — they do **not** merge TOON deltas as SSOT and never apply `feature_delta`.
-  - Legacy active `*.feature.delta.toon` under the change is a migration blocker — remove/migrate before archive.
-  - After archive, promote live `llmanspec/specs/**` via a local merge of the feature branch into the default branch (`git switch <default> && git merge --ff-only <feature>`; push / hosting PR optional).
-  - **Recommended: single-commit close (`change finalize`)** — same process runs gates → writes frontmatter (`checkpointed` / `checkpoint_sha = base_sha`) → docs-only archive; leaves the tree dirty once for **one `git commit`**:
+- **Git-native close-out**:
+  - Prerequisites: Branch binding done (`change start` / `attach`); still on the bound branch (or default branch after auto ff-merge).
+  - `change archive` / `change finalize` run **auto ff-merge** (`git merge --ff-only <feature>` into default), **then** rename change docs into `changes/archive/` — rename is never rolled back on merge failure.
+  - Legacy `*.feature.delta.toon` or `spec.toon` under specs is a migration blocker — run `llman sdd project migrate --kind toon2features`.
+  - **Recommended: single-commit close (`change finalize`)** — same process runs gates → auto ff-merge → docs rename; leaves the tree dirty once for **one `git commit`**:
     ```text
     1. Implement live specs + code (working tree may stay dirty)
-    2. llman sdd change finalize <id>   # gates + frontmatter + move change docs
+    2. llman sdd change finalize <id>   # gates + ff-merge + rename change docs
     3. git commit                       # one commit: impl + frontmatter + archive rename
     ```
     **`checkpoint_sha` semantics**: finalize writes attach-time `base_sha`, not the implementation HEAD (under single-commit mode that commit has not happened yet). For a strict implementation SHA, use the fallback below.
@@ -69,20 +68,17 @@ flowchart LR
     1. git commit   # commit live specs + code (clean tree required for checkpoint)
     2. llman sdd change checkpoint <id>   # writes checkpointed / checkpoint_sha (implementation HEAD)
     3. git commit   # commit proposal.md checkpoint metadata
-    4. llman sdd change archive <id>      # moves change docs only
+    4. llman sdd change archive <id>      # ff-merge + rename change docs
     5. git commit   # commit archive rename
     ```
-- **BDD-off**:
-  - `change archive` merges change-scoped TOON deltas into main `spec.toon` as today.
-  - No attach / checkpoint / feature-branch / harness requirements.
 
 ### 3) Full validation
 - After all archives complete: `llman sdd validate --all --strict --no-interactive`.
 - Confirm post-archive spec artifacts are consistent.
 
-### 4) Commit / merge guidance
-- BDD-off: suggest commit message (format: `feat(sdd): archive <id1>, <id2> - <short summary>`), then `git add -A && git commit -m "..."`.
-- BDD-on: after docs archive, merge the feature branch into the default branch locally (`git switch <default> && git merge --ff-only <feature>`; optional `git branch -d <feature>`). push / hosting PR only when the user or project explicitly requires remote review.
+### 4) Commit guidance
+- Suggest commit message (format: `feat(sdd): archive <id1>, <id2> - <short summary>`), then `git add -A && git commit -m "..."` if not already committed.
+- Optional: `git branch -d <feature>` after ff-merge. push / hosting PR only when the user or project explicitly requires remote review.
 - If user requests auto-commit of the archive docs commit, execute and output commit hash.
 - **Archived `depends_on`**: archive renames the change dir to `archive/YYYY-MM-DD-<id>`, but validate recognizes `depends_on` pointing to archived/frozen ids as INFO (not ERROR), so you do **not** need to manually update other changes' `depends_on` frontmatter after archive.
 
@@ -101,65 +97,47 @@ Common commands:
 - `llman sdd context --task "<description>" --paths "<files>"` (find relevant specs). Uses the pageindex agentic tree backend (needs `LLMAN_SDD_INDEX_CHAT_MODEL`). Preset via `LLMAN_SDD_INDEX_BACKEND`.
 - `llman sdd list` (list changes)
 - `llman sdd list --specs` (list specs with purpose/scope metadata)
-- `llman sdd show <id>` (show change/spec)
+- `llman sdd show <id>` (show change/spec; `--type change --output json` includes `stage` / `specsLanded` / `skipSpecsLanding` / `readyToImplement` — apply gate is `readyToImplement`, not vague "complete artifacts")
 - `llman sdd validate <id>` (validate a change or spec)
 - `llman sdd validate --all` (bulk validate)
 - `llman sdd index rebuild` (rebuild the pageindex tree index — no model needed)
 - `llman sdd index check` (check index freshness)
-- `llman sdd change new <id>` (create draft `changes/<id>/proposal.md`)
-
-
-- `llman sdd change delta …` (BDD-off only: TOON delta authoring; rejected when BDD-on)
-
-- `llman sdd change archive <id>` (seal a change; BDD-on: docs only after checkpoint / finalize fallback; BDD-off: merge TOON deltas)
+- `llman sdd change new <id>` (create planning-shell draft `changes/<id>/proposal.md` only; does not write live specs)
+- `llman sdd change start <id> [--worktree]` (Designed→Full: clean tree on default branch → create `sdd/<id>` + attach; Branch binding only — not Specs landing, not apply-ready)
+- `llman sdd change attach <id> [--force]` (bind an existing non-default feature branch + base SHA; rejects the default branch)
+- `llman sdd change finalize <id> [--no-check]` (**recommended single-commit close-out** — after verify; dirty tree OK; gates + auto ff-merge + docs rename)
+- `llman sdd change checkpoint <id> [--no-check]` (clean tree + gates before archive; strict sha = HEAD; finalize fallback)
+- `llman sdd change diff <id> [--export-patch <path>]` (read-only `base...HEAD` review/export)
+- `llman sdd change archive <id>` (seal: auto ff-merge into default branch, then rename docs to `changes/archive/`; prefer `finalize` for single-commit close-out)
 - `llman sdd archive freeze [--before YYYY-MM-DD] [--keep-recent N] [--dry-run]` (freeze archived dirs)
 - `llman sdd archive thaw [--change <id> ...] [--dest <path>]` (restore from cold-backup)
 - `llman sdd graph [CHANGE] [--format mermaid] [--scope active|archived|all] [--depth N]` (generate change dependency graph)
-- `llman sdd project migrate [--kind format|partitioned|legacy-bdd|auto]` (one-shot migrations)
+- `llman sdd project migrate --kind spec-md2toon` (`.md`+fence → standalone `.toon`; `partitioned` removed)
 
-Validation fixes (TOON standalone specs):
+Validation fixes (single-track feature-as-spec):
 
-1) Missing validation scope (`Spec valid_scope must not be empty`):
-Main specs MUST carry a non-empty `valid_scope` inside the `.toon` document.
-`llmanspec/specs/<feature-id>/spec.toon`:
-```toon
-kind: llman.sdd.spec
-name: sample
-purpose: "One-line overview."
-valid_scope[1]: src
-requirements[1]{req_id,title,statement}:
-  r1,Title,System MUST do something.
-scenarios[1]{req_id,id,given,when,then}:
-  r1,happy,"",a trigger happens,the outcome is observed
+1) Missing header comments (`missing `# capability:`` header comment`):
+Every `llmanspec/specs/<capability>/<capability>.feature` MUST start with:
+```
+# language: zh-CN
+# capability: <capability>
+# purpose: One-line overview.
+# scope: src/
 ```
 
-2) No delta ops in a change: add at least one op + scenario in
-`llmanspec/changes/<change-id>/specs/<feature-id>/spec.toon`:
-```toon
-kind: llman.sdd.delta
-ops[1]{op,req_id,title,statement,from,to,name}:
-  add_requirement,r1,Title,System MUST do something.,null,null,null
-op_scenarios[1]{req_id,id,given,when,then}:
-  r1,happy,"",a trigger happens,the outcome is observed
-```
+2) Tag grammar (`@human constraint scenario must carry an @req:<req_id> tag` / `orphan acceptance scenario`):
+- Rules: `@req:<id> @human` — statement in the scenario description (MUST/SHALL required).
+- Acceptance: `@executable` + at least one `@req:<id>` linking a rule.
+- `@manual` requires `@human`. Never combine `@human` with `@executable`.
 
-3) Tabular value quoting error ("Expected N tabular row values, but got M"):
-Values containing **spaces**, commas, colons, or brackets MUST be double-quoted in tabular rows.
-```toon
-# BAD: spaces in an unquoted value split it into multiple values
-r1,happy,"",a trigger happens,the outcome is observed
+3) Legacy `spec.toon` present (`legacy spec.toon found ... run ... toon2features`):
+Run `llman sdd project migrate --kind toon2features --yes`, review the diff, commit.
 
-# GOOD: multi-word values quoted
-r1,happy,"","a trigger happens","the outcome is observed"
-```
-
-4) BDD-on guardrail (Git-native Partitioned SSOT):
-When `config.yaml` has `bdd:`: `spec.toon` = constraints / non-executable scenarios; `*.feature` = executable GWT (`@req`). Edit live files on a non-default branch → `change attach` → prefer `change finalize` (single commit) or fallback `checkpoint` → docs-only `change archive` → Git merge. Do not hunt for solidify, and do not create `*.feature.delta.toon` (if one already exists it is a migration blocker — run `project migrate --kind partitioned`). Empty requirements with no `.feature` = ERROR.
-
-Notes:
-- Each spec is a single standalone `.toon` file; there is no Markdown shell or ```toon fence.
-- `null` represents missing optional fields.
-- Migrate legacy `.md`+fence specs with `llman sdd migrate`.
+Git-native guardrail:
+- **Branch binding** → **Specs landing**: first `change start` / `attach`, then edit live `.feature` files on the bound non-default branch and commit.
+- Locked rules: modifying/removing existing `@human` scenarios fails the gate unless the proposal frontmatter has `rules_edit_acked: true`.
+- Apply requires `readyToImplement=true` (or `skip_specs_landing`). Close-out prefers `change finalize`.
+- Do not use `change delta` / solidify / `*.feature.delta.toon`.
 
 ## Context
 - Gather the current change/spec state before acting.
@@ -172,7 +150,8 @@ Notes:
 - Keep changes minimal and scoped.
 - Avoid guessing when identifiers or intent are ambiguous.
 - Use `llman sdd context --task --paths` before reading full spec files.
-- Choose workflow path based on change scale: behavioral contract changes use full SDD, implementation changes use quick path.
+- Choose workflow path by change scale: behavioral contracts use full SDD (Branch binding → Specs landing → `readyToImplement` → apply); implementation changes use quick path (live specs still require a bound branch).
+- Do not conflate skill navigation with the Git-native lifecycle; never edit live `llmanspec/specs/**` on the default branch.
 
 ## Workflow
 - Use `llman sdd` commands as the source of truth.
