@@ -12,6 +12,8 @@
 
   **dap** **z**ip — 压缩 DAP 消息，给 AI 智能体省 token
 
+  姊妹项目：[lspz](https://github.com/straydragon/lspz) — 压缩 LSP 消息，给 AI 智能体省 token
+
 </div>
 
 ---
@@ -62,7 +64,7 @@ dapz daemon              # 单独长驻；dapz daemon --cwd . list
 
 工具：`debug_launch` / `debug_attach` → `get_stack` / `get_scopes` / `get_variables` / `evaluate` / `get_exception` → `step_*` / `continue` → `disconnect`（21 tools）。
 
-Claude Code 一键注入（对齐 lspz）：
+Claude Code 一键注入（对齐 [lspz](https://github.com/straydragon/lspz)）：
 
 ```bash
 cargo install dapz --features mcp
