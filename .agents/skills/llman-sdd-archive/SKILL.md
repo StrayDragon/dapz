@@ -1,123 +1,82 @@
 ---
 name: "llman-sdd-archive"
-description: "Archive completed llman SDD changes. Auto ff-merge into the default branch, then rename change docs to archive/. Use after verify reports all-clear."
+description: "Archive a completed change: merge back (squash default), rename docs into archive/, auto-commit the close-out. Run after verify is green."
 metadata:
-  version: "0.0.68"
-  llman_sdd:
-    bdd_mode: "off"
-    skill_set: "default"
+  version: "0.5.0"
 ---
 
 # LLMAN SDD Archive
 
-Use this skill to archive completed changes. Prerequisites: verify all-green, and the change already has Branch binding plus Specs landing (or `skip_specs_landing`; live specs are on the bound branch). Archive/finalize **auto ff-merges** into the default branch, then **renames** change docs to `changes/archive/` (one follow-up `git commit` for the dirty rename). `git push` / hosting PR are optional.
+Archive completed changes. Prerequisites: verify all-green, and the change is branch-bound with specs landed (or `needs_specs_change: false`). `change finalize` **auto-merges** into the base branch (target: `--into` > binding `base_branch` > default branch; method: `--method` > config `sdd.merge_method`, squash by default — feature diff + rename collapse into ONE commit on the target), **renames** change docs into `changes/archive/`, then **auto-commits** `archive(sdd): <change-id>` (`--no-commit` skips). `git push` / PR are optional.
 
 ## Pipeline Position
 
 ```mermaid
 flowchart LR
-    verify["llman-sdd-verify<br/>Verify"] --> archive
-    archive["★ llman-sdd-archive ★<br/>Archive (you are here)"]
+    verify["llman-sdd-verify"] --> archive["★ llman-sdd-archive"]
 
     style archive fill:#fff3cd,stroke:#ffc107,stroke-width:3px
 ```
 
-> 📍 You are in the archive phase: the last stop in the Git-native lifecycle.
-> 📎 If specs get too large, run `llman-sdd-specs-compact` to compress.
+> 📍 You are in archive: the last stop of the branch lifecycle. If specs grow too large, run `llman-sdd-specs-compact`.
 
 ## Hard Constraints
 
-- **Must pass verify phase all-green first**: don't archive changes that haven't passed verification.
-- **Must already have Branch binding**: `change start` / `attach` done; otherwise STOP.
-- **SSOT validation**: every change must pass `llman sdd validate <id> --strict --no-interactive` before archiving.
+- **Verify must be all-green first**; **the change must be branch-bound** (`change start` / `attach`) — otherwise STOP.
+- Every change must pass `llman-sdd validate <id> --strict` before archiving.
 - **Don't ask "should I continue?"**: execute the full batch to completion unless you hit an unresolvable error.
-- **Close-out MUST NOT default to PR/push**: after archive/finalize, default to a local ff-merge (handled by the CLI) and one `git commit` for the docs rename. `git push` / hosting PR are optional — only when the user or project explicitly requires remote review. **Agent MUST NOT** push or open a PR by default on this skill's account.
+- **Close-out MUST NOT default to PR/push**: the CLI merges locally (squash default) + one close-out commit. Push / PR only when the user or project explicitly requires remote review — **Agent MUST NOT** push or open a PR by default.
 
 ## Steps
 
 ### 0) Preflight
-- `git status --porcelain`: confirm working tree changes belong to completed changes.
-- If unexpected changes exist, handle them (stash or report).
+- `git status --porcelain`: confirm working-tree changes belong to completed changes; handle unexpected ones first (stash or report).
 
-### 1) Confirm target changes
-- Determine target IDs: single or batch (from user input or `llman sdd list --json`).
-- Always announce: "Archiving IDs: <id1>, <id2>, ...".
-- Confirm each change has passed verify phase all-green.
+### 1) Confirm targets
+- Determine IDs (single or batch, from user input or `llman-sdd list --json`); always announce "Archiving IDs: <id1>, <id2>, ..." and confirm each change is verify all-green.
 
 ### 2) Archive one by one
-- Validate each first: `llman sdd validate <id> --strict --no-interactive`.
-- Validation failure → STOP and report; don't skip validation and force archive.
-- Optional preview: `llman sdd change archive <id> --dry-run`.
-- Execute archive:
-  - default: `llman sdd change archive <id>`
-  - tooling-only: `llman sdd change archive <id> --skip-specs`
-  - **stop immediately on first failure**, report remaining unprocessed IDs.
-- **Git-native close-out**:
-  - Prerequisites: Branch binding done (`change start` / `attach`); still on the bound branch (or default branch after auto ff-merge).
-  - `change archive` / `change finalize` run **auto ff-merge** (`git merge --ff-only <feature>` into default), **then** rename change docs into `changes/archive/` — rename is never rolled back on merge failure.
-  - Legacy `*.feature.delta.toon` or `spec.toon` under specs is a migration blocker — run `llman sdd project migrate --kind toon2features`.
-  - **Recommended: single-commit close (`change finalize`)** — same process runs gates → auto ff-merge → docs rename; leaves the tree dirty once for **one `git commit`**:
+- **Human review gate (before each id, including batches)**: run `llman-sdd review` (plain; `--capability` takes a spec id only). Exit code zero → continue; non-zero = CRITICAL → STOP, fix, re-run; MUST NOT archive with CRITICAL findings open.
+- Validate first: `llman-sdd validate <id> --strict`; failure → STOP and report, never force-archive.
+- Optional preview: `llman-sdd change archive <id> --dry-run`.
+- Execute: `llman-sdd change archive <id>`; **stop immediately on first failure** and report the remaining IDs.
+- **Branch close-out**:
+  - Prerequisites: branch bound; still on the bound branch (or on the target branch after the auto merge).
+  - `change archive` / `change finalize` run the **auto merge** (target `--into` > `base_branch` > default branch; method squash by default or `ff`; when the target is held by another worktree the merge and commit run in place inside it, with `executed in target worktree <path>` in the output; a dirty holding worktree aborts with disposal options and zero writes), **then** rename into `changes/archive/` — the rename is never rolled back on merge failure and degradation is reported explicitly.
+  - **Default: `change finalize` (one-command close)** — gates → merge → rename → **auto commit** `archive(sdd): <change-id>` (no manual `git commit` needed; locked-rule edits are a report-only WARNING — warn, never block):
     ```text
-    1. Implement live specs + code (working tree may stay dirty)
-    2. llman sdd change finalize <id>   # gates + ff-merge + rename change docs
-    3. git commit                       # one commit: impl + frontmatter + archive rename
+    1. Implement specs + code (working tree may stay dirty; commits on the branch are free)
+    2. llman-sdd change finalize <id>    # gates + merge (squash default) + rename + auto commit
+    3. optional: git commit --amend to adjust the message; git branch -D <feature>  # after squash the branch is no longer an ancestor; -d gets refused
     ```
-    **`checkpoint_sha` semantics**: finalize writes attach-time `base_sha`, not the implementation HEAD (under single-commit mode that commit has not happened yet). For a strict implementation SHA, use the fallback below.
-  - **Fallback: multi-commit sequence (`checkpoint` + `archive`)** — when you need a strict `checkpoint_sha`, or want a mid-flight review snapshot:
-    ```text
-    1. git commit   # commit live specs + code (clean tree required for checkpoint)
-    2. llman sdd change checkpoint <id>   # writes checkpointed / checkpoint_sha (implementation HEAD)
-    3. git commit   # commit proposal.md checkpoint metadata
-    4. llman sdd change archive <id>      # ff-merge + rename change docs
-    5. git commit   # commit archive rename
-    ```
+    `--no-commit` skips the auto commit (CI / pre-commit-hook conflicts): finalize leaves the tree dirty and prints the manual commit command. Idempotent retry: a rerun after a failed auto commit detects the already-archived rename and finishes the commit.
+  - **Fallback: plain `change archive <id>`** — same auto merge + rename + close-out commit as finalize (no `--no-commit` here); gates: tasks all checked + clean tree + on the bound non-default branch (`--force` skips the gates). Snapshot review: `change diff`.
 
 ### 3) Full validation
-- After all archives complete: `llman sdd validate --all --strict --no-interactive`.
-- Confirm post-archive spec artifacts are consistent.
+- After all archives: `llman-sdd validate --all --strict`; confirm spec artifacts are consistent.
 
 ### 4) Commit guidance
-- Suggest commit message (format: `feat(sdd): archive <id1>, <id2> - <short summary>`), then `git add -A && git commit -m "..."` if not already committed.
-- Optional: `git branch -d <feature>` after ff-merge. push / hosting PR only when the user or project explicitly requires remote review.
-- If user requests auto-commit of the archive docs commit, execute and output commit hash.
-- **Archived `depends_on`**: archive renames the change dir to `archive/YYYY-MM-DD-<id>`, but validate recognizes `depends_on` pointing to archived/frozen ids as INFO (not ERROR), so you do **not** need to manually update other changes' `depends_on` frontmatter after archive.
-
-> 💡 Previous phase `llman-sdd-verify` (passed verification) → this phase completes the loop. If specs grow too large, run `llman-sdd-specs-compact`.
+- Finalize already auto-committed; with `--no-commit`, commit manually: `git add -A && git commit -m "archive(sdd): <id1>, <id2>"`.
+- Optional: `git branch -D <feature>` after the merge. Push / PR only when explicitly required.
+- **Breaking contract changes** (removed/renamed frontmatter field, command, tag, or stage value) MUST ship an upgrade path under `migrations/v<from>-v<to>/` (README + one-shot script, shipped in-repo) — verify it exists before closing.
+- **Archived `depends_on`**: archive renames the change dir to `archive/YYYY-MM-DD-<id>`; validate treats `depends_on` pointing to archived/frozen ids as INFO (not ERROR), so you do **not** need to update other changes' frontmatter after archive.
 
 ## Archive Cold Backup Guidance
-- If archived directories are growing too large, use cold backup maintenance:
-  - Preview freeze candidates: `llman sdd archive freeze --dry-run`
-  - Freeze old archives: `llman sdd archive freeze --before <YYYY-MM-DD> --keep-recent <N>`
-  - Restore when needed: `llman sdd archive thaw --change <YYYY-MM-DD-id>`
-- Apply freeze/thaw only to dated archive directories (`YYYY-MM-DD-*`) and keep a small recent window unfrozen when possible.
+- When archived directories grow too large, use cold backup maintenance (freeze moves bodies into the 7z cold backup and replaces the dir with a flat `<YYYY-MM-DD>-<id>.yaml` index card carrying only `title` and `depends_on`):
+  - Preview freeze candidates: `llman-sdd archive freeze --dry-run`
+  - Freeze old archives: `llman-sdd archive freeze --before <YYYY-MM-DD> --keep-recent <N>`
+  - List frozen entries: `llman-sdd archive freeze --list`
+  - Restore when needed: `llman-sdd archive thaw --change <YYYY-MM-DD-id>` (extracts bodies back and removes the card)
+- Apply freeze/thaw only to dated archive directories (`YYYY-MM-DD-*`); keep a small recent window unfrozen.
+- The flat index card stays on disk: `title` (from the proposal H1) and `depends_on` (seed for graph dependency edges) are grep-able and traceable; the id and date are implied by the file name — the purpose and dependencies of a frozen change are inspectable without thawing, while bodies live in the 7z cold backup and are fetched on demand.
+- Running outside the main checkout (a worktree not holding the default branch) prints a warning (never blocks) — continue there only intentionally.
 
-Before acting, read `llmanspec/config.yaml` and follow its `context` and `rules` if present.
-
-Common commands:
-- `llman sdd context --task "<description>" --paths "<files>"` (find relevant specs). Uses the pageindex agentic tree backend (needs `LLMAN_SDD_INDEX_CHAT_MODEL`). Preset via `LLMAN_SDD_INDEX_BACKEND`.
-- `llman sdd list` (list changes)
-- `llman sdd list --specs` (list specs with purpose/scope metadata)
-- `llman sdd show <id>` (show change/spec; `--type change --output json` includes `stage` / `specsLanded` / `skipSpecsLanding` / `readyToImplement` — apply gate is `readyToImplement`, not vague "complete artifacts")
-- `llman sdd validate <id>` (validate a change or spec)
-- `llman sdd validate --all` (bulk validate)
-- `llman sdd index rebuild` (rebuild the pageindex tree index — no model needed)
-- `llman sdd index check` (check index freshness)
-- `llman sdd change new <id>` (create planning-shell draft `changes/<id>/proposal.md` only; does not write live specs)
-- `llman sdd change start <id> [--worktree]` (Designed→Full: clean tree on default branch → create `sdd/<id>` + attach; Branch binding only — not Specs landing, not apply-ready)
-- `llman sdd change attach <id> [--force]` (bind an existing non-default feature branch + base SHA; rejects the default branch)
-- `llman sdd change finalize <id> [--no-check]` (**recommended single-commit close-out** — after verify; dirty tree OK; gates + auto ff-merge + docs rename)
-- `llman sdd change checkpoint <id> [--no-check]` (clean tree + gates before archive; strict sha = HEAD; finalize fallback)
-- `llman sdd change diff <id> [--export-patch <path>]` (read-only `base...HEAD` review/export)
-- `llman sdd change archive <id>` (seal: auto ff-merge into default branch, then rename docs to `changes/archive/`; prefer `finalize` for single-commit close-out)
-- `llman sdd archive freeze [--before YYYY-MM-DD] [--keep-recent N] [--dry-run]` (freeze archived dirs)
-- `llman sdd archive thaw [--change <id> ...] [--dest <path>]` (restore from cold-backup)
-- `llman sdd graph [CHANGE] [--format mermaid] [--scope active|archived|all] [--depth N]` (generate change dependency graph)
-- `llman sdd project migrate --kind spec-md2toon` (`.md`+fence → standalone `.toon`; `partitioned` removed)
+> For command details run `llman-sdd <cmd> --help`; the CLI is the command reference — skills embed no command tables.
+> "Spec" here = a `.feature` file under this project's `llmanspec/specs/`; run `llman-sdd list --specs` or `llman-sdd show <capability>`.
 
 Validation fixes (single-track feature-as-spec):
 
-1) Missing header comments (`missing `# capability:`` header comment`):
-Every `llmanspec/specs/<capability>/<capability>.feature` MUST start with:
+1) Missing header comments (`missing # capability: header comment`): every capability `.feature` (`llmanspec/specs/<capability>.feature` or the same-named main file in a directory) MUST start with:
 ```
 # language: zh-CN
 # capability: <capability>
@@ -125,51 +84,38 @@ Every `llmanspec/specs/<capability>/<capability>.feature` MUST start with:
 # scope: src/
 ```
 
-2) Tag grammar (`@human constraint scenario must carry an @req:<req_id> tag` / `orphan acceptance scenario`):
-- Rules: `@req:<id> @human` — statement in the scenario description (MUST/SHALL required).
-- Acceptance: `@executable` + at least one `@req:<id>` linking a rule.
-- `@manual` requires `@human`. Never combine `@human` with `@executable`.
+2) Native layout (`rule must carry an @req:<req_id> tag on the rule header`):
+- One canonical style: `@req:<id>` on the `规则:` block header, nested `场景:` (Given/When/Then) as executable examples — the default preferred shape.
+- Only keep a `规则:` block with no nested scenario (bare rule) for requirements that cannot be expressed programmatically or are not yet converted: free-text description, no MUST/SHALL enforcement; validate reports an aggregate count, the review `pending` signal measures it, specs-compact keeps reducing it.
+- Legacy tags `@executable`/`@rule`/`@human`/`@manual` are gone and parse inert; when old files hit structural problems run `llman-sdd spec migrate-native`.
+- Top-level `场景:` outside any `规则:` are plain feature-level examples: no rule handle, no warning, not part of rule accounting (native Gherkin).
 
-3) Legacy `spec.toon` present (`legacy spec.toon found ... run ... toon2features`):
-Run `llman sdd project migrate --kind toon2features --yes`, review the diff, commit.
-
-Git-native guardrail:
-- **Branch binding** → **Specs landing**: first `change start` / `attach`, then edit live `.feature` files on the bound non-default branch and commit.
-- Locked rules: modifying/removing existing `@human` scenarios fails the gate unless the proposal frontmatter has `rules_edit_acked: true`.
-- Apply requires `readyToImplement=true` (or `skip_specs_landing`). Close-out prefers `change finalize`.
-- Do not use `change delta` / solidify / `*.feature.delta.toon`.
+Branch guardrail:
+- First `change start` / `attach` to bind the branch, then edit `.feature` on the bound non-default branch and commit (land specs).
+- Locked rules (report-only): editing/removing an existing `规则:` block yields a WARNING and never blocks validate / finalize / `change diff`; the report names the rule by `@req:<id>`. Control points: git branch diff plus `llman-sdd review` / `change diff`. Legacy lock-ack metadata (frontmatter `rules_touched` / `agent_acked`, the `@agent` tag, the `--yes` ack semantics) is fully removed — no aliases, no compat layer.
+- Enter apply when `stage=full` and the specs-landed gate passes (specsLanded ∨ `needs_specs_change: false`); verify/finalize require `readyToImplement=true` (completion signal). Close-out prefers `change finalize`.
 
 ## Context
-- Gather the current change/spec state before acting.
-- Prefer `llman sdd context --task --paths` to discover relevant specs instead of guessing or full scans.
+- Check state before acting: change/spec status comes from `llman-sdd show/list/validate`; locate relevant specs with `llman-sdd context --task --paths` before reading spec files.
 
 ## Goal
-- State the concrete outcome for this command/skill execution.
+- Reach one verifiable outcome; report result paths and validation state.
 
 ## Constraints
-- Keep changes minimal and scoped.
-- Avoid guessing when identifiers or intent are ambiguous.
-- Use `llman sdd context --task --paths` before reading full spec files.
-- Choose workflow path by change scale: behavioral contracts use full SDD (Branch binding → Specs landing → `readyToImplement` → apply); implementation changes use quick path (live specs still require a bound branch).
-- Do not conflate skill navigation with the Git-native lifecycle; never edit live `llmanspec/specs/**` on the default branch.
+- Follow the skill body's hard rules (not repeated here). Classify first: behavior-contract changes take the full SDD path, implementation-only changes take quick; when unsure choose full SDD. Keep changes minimal; never force past a known validation failure.
 
 ## Workflow
-- Use `llman sdd` commands as the source of truth.
-- Validate outcomes when files or specs are updated.
-- Prefer `llman sdd context` over full reads or guessing.
-- When context is unavailable follow error guidance (rebuild index or fall back to `list --specs --json`).
+- Treat `llman-sdd` command output as the source of truth at every step; run `llman-sdd validate` after touching artifacts. Command details: `llman-sdd <cmd> --help`.
 
 ## Decision Policy
-- Ask for clarification when a high-impact ambiguity remains.
-- Stop instead of forcing through known validation errors.
+- Clarify high-impact ambiguity before proceeding; verify facts yourself, ask the user only for decisions.
 
 ## Output Contract
-- Summarize actions taken.
-- Provide resulting paths and validation status.
+- Human-readable summary first (verdict / risks / decisions needed), machine detail after.
 
 ## Ethics Governance
-- `ethics.risk_level`: classify risk as `low|medium|high|critical`.
-- `ethics.prohibited_actions`: list actions that MUST NOT be performed.
-- `ethics.required_evidence`: list required evidence before high-impact output.
-- `ethics.refusal_contract`: define when to refuse and safe alternative response.
-- `ethics.escalation_policy`: define when to escalate to user confirmation/review.
+- `ethics.risk_level`: low — reads/writes this repo and `llmanspec/` only, no outward-facing actions; a skill body may override.
+- `ethics.prohibited_actions`: actions violating the skill body's hard rules; push / PR / external upload without an explicit user request.
+- `ethics.required_evidence`: conclusions backed by command output or file paths; gate state per `llman-sdd validate`.
+- `ethics.refusal_contract`: gate CRITICAL not cleared → refuse to advance; self-repair cap reached → report a blocker.
+- `ethics.escalation_policy`: pause and ask the user before changing SDD contracts/templates or irreversible actions.
