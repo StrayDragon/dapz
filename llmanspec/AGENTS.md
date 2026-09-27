@@ -20,7 +20,7 @@ project-specific rules, context, or conventions that you want AI agents to follo
 - Change ids: kebab-case with verb prefix (`add-`, `update-`, `remove-`, `refactor-`, `docs-`).
 - Capability dirs under `llmanspec/specs/`: prefer `proxy`, `mcp`, `agent-sdk`, `transport`, `codec`, `adapters`, `interceptors`, `ssot-rules` (mirror lspz where sensible; DAP-specific names ok).
 - **`req_id` MUST be globally unique** across all capabilities (use `llman sdd spec next-req-id` / `project dedupe-req-ids`).
-- **BDD-off**: do not enable `bdd:` in `config.yaml`. Scenario rows MUST use `feature: false` (doc-only GWT).
+- **Scenarios are doc-GWT with a batch acceptance runner**: GWT in `llmanspec/specs/**` is documentation mapped to the existing Rust tests — no pytest-bdd/cucumber bindings and no `bdd` cargo feature. Acceptance runs batch-once via `bdd.run_command: cargo test --quiet` (`llmanspec/config.yaml`) during `validate --specs` and change close-out; new scenarios need NO special tags (never `@skip` unless a scenario is genuinely not machine-checkable).
 - Reference implementation: `../lspz` is **read-only**; copy-port files, do **not** extract a shared crate.
 - Do not add `uri` / `config_watcher` / workspace roots unless `_PLAN.md` §9 explicitly promotes them（`daemon` 已落地；`init` 已对齐 lspz）。
 - Validation gate before apply: `llman sdd validate <change-id> --strict --no-interactive`.

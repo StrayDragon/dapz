@@ -1,5 +1,8 @@
 ---
 depends_on: []
+branch: sdd/update-bdd-batch-runner
+base_branch: main
+base_sha: 723e26cd98a71f4a8564cf9fb27409e2c1674921
 ---
 
 ## Why
