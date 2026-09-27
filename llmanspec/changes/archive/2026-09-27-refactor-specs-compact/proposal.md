@@ -1,5 +1,8 @@
 ---
 depends_on: []
+branch: sdd/refactor-specs-compact
+base_branch: main
+base_sha: ac0a39529cad7f3c2ceeb2f6aa1c95c7c9b005d3
 ---
 
 ## Why
