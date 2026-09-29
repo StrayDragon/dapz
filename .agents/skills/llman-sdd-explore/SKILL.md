@@ -2,7 +2,7 @@
 name: "llman-sdd-explore"
 description: "Explore mode: investigate, clarify requirements, think through problems before acting. No code writing. Use when intent is unclear or analysis comes first."
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # LLMAN SDD Explore

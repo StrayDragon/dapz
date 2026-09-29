@@ -2,7 +2,7 @@
 name: "llman-sdd-propose"
 description: "Create a proposal for MUST/SHALL behavioral contract changes (proposal/tasks → bind branch → land specs). Small changes → quick; ideas → draft."
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # LLMAN SDD Propose

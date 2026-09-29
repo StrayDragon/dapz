@@ -2,7 +2,7 @@
 name: "llman-sdd-quick"
 description: "Quick path for small changes that don't touch behavioral contracts (refactor/typo/perf). If a MUST/SHALL change emerges, stop and switch to propose."
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # LLMAN SDD Quick Path

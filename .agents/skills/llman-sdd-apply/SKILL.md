@@ -2,7 +2,7 @@
 name: "llman-sdd-apply"
 description: "Implement a proposed change's tasks in a closed loop: code → test → self-heal → all gates green. Enter after propose, once specs are landed."
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # LLMAN SDD Apply

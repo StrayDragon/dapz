@@ -2,7 +2,7 @@
 name: "llman-sdd-apply-cycle"
 description: "End-to-end closed loop for one change: implement→test→validate→verify→archive. Manual trigger only; agent must not auto-invoke."
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 disable-model-invocation: true
 ---
 
