@@ -2,7 +2,7 @@
 name: "llman-sdd-specs-compact"
 description: "Compact and dedupe specs: merge redundant requirements/scenarios without changing normative behavior. Manual run only, when the user explicitly asks."
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # LLMAN SDD Specs Compact

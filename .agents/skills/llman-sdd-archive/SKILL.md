@@ -2,7 +2,7 @@
 name: "llman-sdd-archive"
 description: "Archive a completed change: merge back (squash default), rename docs into archive/, auto-commit the close-out. Run after verify is green."
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # LLMAN SDD Archive

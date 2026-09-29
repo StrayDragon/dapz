@@ -2,7 +2,7 @@
 name: "llman-sdd-draft"
 description: "Capture a change idea as a draft (proposal.md only, no id asked). For jotting ideas/future needs; formalize with propose when ready."
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # LLMAN SDD Draft
